@@ -4,6 +4,7 @@
     \brief Contains class implementation for data extraction from a EDF Plus file.
 */
 
+#include <iostream>	// for cout
 #include "edfplus.h"
 using namespace std;
 
@@ -17,10 +18,10 @@ using namespace std;
 
 Cedfplus::Cedfplus( CString oInputFile )
 {
+	m_eEdfStatus = Cedfplus::EDF_FILE_OPEN_ERROR;		// be pessimistic
+
 	m_poInputFile = new ifstream( oInputFile );
 
-	m_eEdfStatus = Cedfplus::EDF_FILE_OPEN_ERROR;		// be pessimistic
-	
 	if( m_poInputFile->fail() )
 	{
 		return;
@@ -40,6 +41,18 @@ ofstream fout; // declares an object of type ofstream
 	fin >> num1 >> num2 >> num3;
 	fout << "The sum is " << num1+num2+num3 << endl;
 */
+		//if( m_poInputFile->open();
+
+		m_pcFileData = new char( sizeof(Cedfplus::generalHeader_S)+1 );
+		{
+			// error handling
+		}
+
+		int iDebug = sizeof(Cedfplus::generalHeader_S);
+		int extracted = m_poInputFile->read( m_pcFileData, sizeof(Cedfplus::generalHeader_S) ).gcount();
+
+		m_pcGeneralHeader = (generalHeader_S *)m_pcFileData;
+
 		m_eEdfStatus = Cedfplus::EDF_SUCCESS;
 	}
 } // Cedfplus
