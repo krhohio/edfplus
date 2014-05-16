@@ -18,43 +18,33 @@ using namespace std;
 
 CReadEDF::CReadEDF( char *pszInputFile )
 {
-	m_eEdfStatus = CReadEDF::EDF_FILE_OPEN_ERROR;		// be pessimistic
-
-	m_poEdfFile = new ifstream( pszInputFile );
-
-	if( m_poEdfFile->fail() )
+	// Fake for loop for common error exit:
+	for( bool allDone = false; allDone == false; allDone = true )
 	{
-		return;
-	}
-	else
-	{
+		m_poEdfFile = new ifstream( pszInputFile );
 
-/*
-ofstream fout; // declares an object of type ofstream
-	 // ifstream and ofstream are defined in <fstream>
-	fin.open("infile.txt");
-	fout.open(“outfile.txt");
-	// for any stream object s, s.open(<filename>) opens filename
-	// and connects the stream s to it so that chars can flow between
-	// them.
-	int num1, num2, num3;
-	fin >> num1 >> num2 >> num3;
-	fout << "The sum is " << num1+num2+num3 << endl;
-*/
-		//if( m_poInputFile->open();
-
-		m_pcFileData = new char[sizeof(CReadEDF::generalHeader_S)+1 ];
+		if( m_poEdfFile->fail() )
 		{
-			// error handling
+			m_eEdfStatus = CReadEDF::EDF_FILE_OPEN_ERROR;		// be pessimistic
+			break;
 		}
+		else
+		{
+			m_pcFileData = new char[sizeof(CReadEDF::generalHeader_S)+1 ];
+			{
+				// error handling
+			}
 
-		int iDebug = sizeof(CReadEDF::generalHeader_S);
-		int extracted = m_poEdfFile->read( (char *)&m_acGeneralHeader, sizeof(CReadEDF::generalHeader_S) ).gcount();
+			int iDebug = sizeof(CReadEDF::generalHeader_S);
+			int extracted = m_poEdfFile->read( (char *)&m_acGeneralHeader, sizeof(CReadEDF::generalHeader_S) ).gcount();
 
-		//m_acGeneralHeader = (generalHeader_S *)m_pacFileData;
+			//m_acGeneralHeader = (generalHeader_S *)m_pacFileData;
 
-		m_eEdfStatus = CReadEDF::EDF_SUCCESS;
-	}
+			m_eEdfStatus = CReadEDF::EDF_SUCCESS;
+			break;
+		} //...fail()
+	} //for()
+
 } // CReadEDF
 
 CReadEDF::~CReadEDF( void )

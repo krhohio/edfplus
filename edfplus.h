@@ -79,11 +79,14 @@ class CReadEDF
 		enum edfStatus_E
 		{
 			EDF_SUCCESS,
+			EDF_VOID,						///< enum used when status is not yet available or updated
 			EDF_FILE_OPEN_ERROR,
 			EDF_FILE_CONTENTS_ERROR,
 			EDF_TIME_ERROR,
 			EDF_DATE_ERROR,
 		};
+
+		enum eGetEDFStatus;
 		
 		struct format_S
         {
@@ -220,18 +223,22 @@ ns * 32 ascii : ns * reserved
 		{
 			// \todo if leading space(s) are allowed in date then test for them here:	
 			if( pacTime->cH_MSD < '0' || pacTime->cH_MSD > '2' ) break;		// check for max 24-hour time
-			if( pacTime->cH_LSD < '0' || pacTime->cH_MSD > '9' ) break;
-			if( pacTime->cDot1 != '.' ) break;
+			if( pacTime->cH_LSD < '0' || pacTime->cH_MSD > '9' ) break;		// allow 09:00 and 19:00
+			if( pacTime->cDot1 != '.' ) break;								// ensure a non-digit terminator for atoi()
 
-			if( pacTime->cM_MSD < '0' || pacTime->cM_MSD > '9' ) break;
+//			if( int iHH = atoi( (char *)pacTime->cH_MSD ) > 23 ) break;		// no atoi error checking since done above
+			int iHH = ((pacTime->cH_MSD & 0x0F) * 10 + (pacTime->cH_LSD & 0x0F));
+			if( ((pacTime->cH_MSD & 0x0F) * 10 + (pacTime->cH_LSD & 0x0F)) > 23 ) break;
+
+			if( pacTime->cM_MSD < '0' || pacTime->cM_MSD > '5' ) break;
 			if( pacTime->cM_LSD < '0' || pacTime->cM_MSD > '9' ) break;
-			if( pacTime->cDot1 != '.' ) break;
+			if( pacTime->cDot2 != '.' ) break;
 
-			if( pacTime->cS_MSD < '0' || pacTime->cS_MSD > '9' ) break;
+			if( pacTime->cS_MSD < '0' || pacTime->cS_MSD > '5' ) break;
 			if( pacTime->cS_LSD < '0' || pacTime->cS_MSD > '9' ) break;
-			if( pacTime->cDot1 != '.' ) break;
 
 			bRetVal= true;
+			break;
 		} //for()
 
 		m_szValue[ sizeof( time_S ) ] = '\0';		// make sure there is a string terminator
@@ -248,19 +255,23 @@ ns * 32 ascii : ns * reserved
 		for( bool allDone = false; allDone == false; allDone = true )
 		{
 			// \todo if leading space(s) are allowed in date then test for them here:	
-			if( pacDate->cD_MSD < '0' || pacDate->cD_MSD > '2' ) break;		// check for max 24-hour time
-			if( pacDate->cD_LSD < '0' || pacDate->cD_MSD > '9' ) break;
-			if( pacDate->cDot1 != '.' ) break;
+			if( pacDate->cD_MSD < '0' || pacDate->cD_MSD > '3' ) break;		// check for max 31 days
+			if( pacDate->cD_LSD < '0' || pacDate->cD_MSD > '9' ) break;		// allow day 9, 19, 29
+			if( pacDate->cDot1 != '.' ) break;								// ensure a non-digit terminator for atoi()
 
-			if( pacDate->cM_MSD < '0' || pacDate->cM_MSD > '9' ) break;
+//			if( int iDD = atoi( (char *)pacDate->cD_MSD ) > 31 ) break;		// no atoi error checking since done above
+			int iDD = ((pacDate->cD_MSD & 0x0F) * 10 + (pacDate->cD_LSD & 0x0F));
+			if( ((pacDate->cD_MSD & 0x0F) * 10 + (pacDate->cD_LSD & 0x0F)) > 31 ) break;
+
+			if( pacDate->cM_MSD < '0' || pacDate->cM_MSD > '1' ) break;
 			if( pacDate->cM_LSD < '0' || pacDate->cM_MSD > '9' ) break;
-			if( pacDate->cDot1 != '.' ) break;
+			if( pacDate->cDot2 != '.' ) break;
 
 			if( pacDate->cY_MSD < '0' || pacDate->cY_MSD > '9' ) break;
 			if( pacDate->cY_LSD < '0' || pacDate->cY_MSD > '9' ) break;
-			if( pacDate->cDot1 != '.' ) break;
-
+			
 			bRetVal= true;
+			break;
 		} //for()
 
 		m_szValue[ sizeof( time_S ) ] = '\0';		// make sure there is a string terminator
@@ -270,7 +281,7 @@ ns * 32 ascii : ns * reserved
 	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL )
 	{
 		m_szValue[0] = '\0';	// make sure there is a string terminator
-		memcpy( (void *)&m_acGeneralHeader.cStartTime, (char *)&m_szValue, sizeof( time_S ));
+		memcpy( (char *)&m_szValue, (void *)&m_acGeneralHeader.cStartTime,sizeof( time_S ));
 
 		if( !bValidTimeValue() )
 		{
@@ -288,7 +299,7 @@ ns * 32 ascii : ns * reserved
 	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL )
 	{
 		m_szValue[0] = '\0';	// make sure there is a string terminator
-		strcpy_s( m_szValue, sizeof(date_S), (char *)&m_acGeneralHeader.cStartDate );
+		memcpy( (char *)&m_szValue, (void *)&m_acGeneralHeader.cStartDate, sizeof( date_S ));
 
 		if( !bValidDateValue() )
 		{
@@ -331,16 +342,19 @@ ns * 32 ascii : ns * reserved
 
 	char *pszGetSignalLabel( int iSignalNumber )
 	{
+		m_szValue[0] = '\0';
 		return( &m_szValue[0] );
 	};
 
 	char *pszGetNumberRecords()
 	{
+		m_szValue[0] = '\0';
 		return( &m_szValue[0] );
 	};
 
 	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL )
 	{
+		m_szValue[0] = '\0';
 		return( &m_szValue[0] );
 	};
 
