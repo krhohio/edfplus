@@ -16,13 +16,13 @@ using namespace std;
 *   \return - status
 */
 
-Cedfplus::Cedfplus( CString oInputFile )
+CReadEDF::CReadEDF( char *pszInputFile )
 {
-	m_eEdfStatus = Cedfplus::EDF_FILE_OPEN_ERROR;		// be pessimistic
+	m_eEdfStatus = CReadEDF::EDF_FILE_OPEN_ERROR;		// be pessimistic
 
-	m_poInputFile = new ifstream( oInputFile );
+	m_poEdfFile = new ifstream( pszInputFile );
 
-	if( m_poInputFile->fail() )
+	if( m_poEdfFile->fail() )
 	{
 		return;
 	}
@@ -43,21 +43,21 @@ ofstream fout; // declares an object of type ofstream
 */
 		//if( m_poInputFile->open();
 
-		m_pcFileData = new char( sizeof(Cedfplus::generalHeader_S)+1 );
+		m_pcFileData = new char[sizeof(CReadEDF::generalHeader_S)+1 ];
 		{
 			// error handling
 		}
 
-		int iDebug = sizeof(Cedfplus::generalHeader_S);
-		int extracted = m_poInputFile->read( m_pcFileData, sizeof(Cedfplus::generalHeader_S) ).gcount();
+		int iDebug = sizeof(CReadEDF::generalHeader_S);
+		int extracted = m_poEdfFile->read( (char *)&m_acGeneralHeader, sizeof(CReadEDF::generalHeader_S) ).gcount();
 
-		m_pcGeneralHeader = (generalHeader_S *)m_pcFileData;
+		//m_acGeneralHeader = (generalHeader_S *)m_pacFileData;
 
-		m_eEdfStatus = Cedfplus::EDF_SUCCESS;
+		m_eEdfStatus = CReadEDF::EDF_SUCCESS;
 	}
-} // Cedfplus
+} // CReadEDF
 
-Cedfplus::~Cedfplus( void )
+CReadEDF::~CReadEDF( void )
 {
-	m_poInputFile->close();
+	m_poEdfFile->close();
 }

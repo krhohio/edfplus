@@ -1,13 +1,8 @@
 ﻿#ifndef EDFPLUS_H
 #define EDFPLUS_H
 
-// #if MVCPP
-#include <atlstr.h>
-// #else
-#include <cstring>
-// #endif
-
 #include <fstream>
+#include <errno.h>
 using namespace std;
 
 
@@ -78,7 +73,7 @@ ns * 8 ascii : ns * nr of samples in each data record
 ns * 32 ascii : ns * reserved
 */
 
-class Cedfplus
+class CReadEDF
 {
 	public:
 		enum edfStatus_E
@@ -86,55 +81,92 @@ class Cedfplus
 			EDF_SUCCESS,
 			EDF_FILE_OPEN_ERROR,
 			EDF_FILE_CONTENTS_ERROR,
+			EDF_TIME_ERROR,
+			EDF_DATE_ERROR,
 		};
 		
 		struct format_S
         {
-            char	format[8];		///<
+            char format[8];
         };
 
         struct localPatientID_S
         {
-                char        localPatientID[80];
+            char cLocalPatientID[80];
         };
 
 		struct localRecordingID_S
         {
-                char        localRecordingID[8];
+            char cLocalRecordingID[80];
         };
 
-        struct startDate_S
+        struct date_S
         {
-            char        dd[2];                ///< ASCII dd
-			char        dot1[1];                ///< ASCII ‘.’
-			char        mm[2];                ///< ASCII mm
-			char        dot2[1];                ///< ASCII ‘.’
-			char        yy[2];                ///< ASCII yy
+            char cD_MSD;						///< ASCII Day MSD
+            char cD_LSD;						///< ASCII Day LSD
+			char cDot1;							///< ASCII ‘.’
+			char cM_MSD;						///< ASCII Month MSD
+			char cM_LSD;						///< ASCII Month LSD
+			char cDot2;							///< ASCII ‘.’
+			char cY_MSD;						///< ASCII Year MSD
+        	char cY_LSD;						///< ASCII Year LSD
         };
 
-        struct startTime_S
+        struct time_S
         {
-            char        hh[2];                ///< ASCII hh
-			char        dot1[1];                ///< ASCII ‘.’
-			char        mm[2];                ///< ASCII mm
-			char        dot2[1];                ///< ASCII ‘.’
-			char        ss[2];                ///< ASCII ss
-        };
+            char cH_MSD;						///< ASCII Hour MSD
+            char cH_LSD;						///< ASCII Hour LSD
+			char cDot1;							///< ASCII ‘.’
+			char cM_MSD;						///< ASCII Minutes MSD
+			char cM_LSD;						///< ASCII Minutes LSD
+			char cDot2;							///< ASCII ‘.’
+			char cS_MSD;						///< ASCII Seconds MSD
+        	char cS_LSD;						///< ASCII Seconds LSD
+		};
 
+		struct headerSize_S						
+		{
+			char cHeaderSize[8];				///< 8 ascii : number of bytes in header record
+		};
+		               
+		struct reserved44_S
+		{
+			char cReserved44[44];				///< 44 ascii : reserved 
+		};
+
+		struct numberRecords_S
+		{
+			char cNumberRecords[8];				///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
+		};
+
+		struct duration_S
+		{
+			char cDuration[8];					///< 8 ascii : duration of a data record, in seconds 
+		};
+
+		struct numberSignals_S
+		{
+			char cNumberSignals[4];				///< 4 ascii : number of signals (ns) in data record 
+		};
+
+		struct label_S
+		{
+			char cLabel[16];					///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+		};
 
 	struct generalHeader_S
 	{
-		format_S            format;                 ///< 8 ascii : version of this data format (0) 
-        localPatientID_S    localPatientID;         ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
-		localRecordingID_S  localRecordingID;		///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
-		startDate_S			startDate;              ///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
-		startTime_S			startTime;              ///< 8 ascii : starttime of recording (hh.mm.ss) 
-		headerSize_S		headerSize;				///< 8 ascii : number of bytes in header record 
-		reserved44_S		reserved44;				///< 44 ascii : reserved 
-		numberRecords_S		numberRecords;			///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
-		duration_S			duration;				///< 8 ascii : duration of a data record, in seconds 
-		numberSignals_S		numberSignals;			///< 4 ascii : number of signals (ns) in data record 
-		label_S				label;					///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+		format_S            cFormat;            ///< 8 ascii : version of this data format (0) 
+        localPatientID_S    cLocalPatientID;    ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
+		localRecordingID_S  cLocalRecordingID;	///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
+		date_S				cStartDate;         ///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
+		time_S				cStartTime;         ///< 8 ascii : starttime of recording (hh.mm.ss) 
+		char				cHeaderSize[8];		///< 8 ascii : number of bytes in header record 
+		char				cReserved[44];		///< 44 ascii : reserved 
+		char				cNumberRecords[8];	///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
+		char				cDuration[8];		///< 8 ascii : duration of a data record, in seconds 
+		char				cNumberSignals[4];	///< 4 ascii : number of signals (ns) in data record 
+		char				cLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
 
 /*
 ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
@@ -172,16 +204,152 @@ ns * 8 ascii : ns * nr of samples in each data record
 ns * 32 ascii : ns * reserved
 */
 
-	Cedfplus( CString csInputFile );
-	~Cedfplus( void );
+	CReadEDF( char *csInputFile );
+	~CReadEDF( void );
 
 	edfStatus_E m_eEdfStatus;
 	char *m_pcFileData;
 
-private:	
-	ifstream *m_poInputFile;
-	generalHeader_S *m_pcGeneralHeader;
+	bool bValidTimeValue( void )
+	{
+		bool bRetVal = false;		// be pessimestic
+		time_S *pacTime = (time_S *)&m_szValue[0];
+
+		// Fake for loop for common error exit:
+		for( bool allDone = false; allDone == false; allDone = true )
+		{
+			// \todo if leading space(s) are allowed in date then test for them here:	
+			if( pacTime->cH_MSD < '0' || pacTime->cH_MSD > '2' ) break;		// check for max 24-hour time
+			if( pacTime->cH_LSD < '0' || pacTime->cH_MSD > '9' ) break;
+			if( pacTime->cDot1 != '.' ) break;
+
+			if( pacTime->cM_MSD < '0' || pacTime->cM_MSD > '9' ) break;
+			if( pacTime->cM_LSD < '0' || pacTime->cM_MSD > '9' ) break;
+			if( pacTime->cDot1 != '.' ) break;
+
+			if( pacTime->cS_MSD < '0' || pacTime->cS_MSD > '9' ) break;
+			if( pacTime->cS_LSD < '0' || pacTime->cS_MSD > '9' ) break;
+			if( pacTime->cDot1 != '.' ) break;
+
+			bRetVal= true;
+		} //for()
+
+		m_szValue[ sizeof( time_S ) ] = '\0';		// make sure there is a string terminator
+
+		return( bRetVal );
+	};
+
+	bool bValidDateValue( void )
+	{
+		bool bRetVal = false;		// be pessimestic
+		date_S *pacDate = (date_S *)&m_szValue[0];
+
+		// Fake for loop for common error exit:
+		for( bool allDone = false; allDone == false; allDone = true )
+		{
+			// \todo if leading space(s) are allowed in date then test for them here:	
+			if( pacDate->cD_MSD < '0' || pacDate->cD_MSD > '2' ) break;		// check for max 24-hour time
+			if( pacDate->cD_LSD < '0' || pacDate->cD_MSD > '9' ) break;
+			if( pacDate->cDot1 != '.' ) break;
+
+			if( pacDate->cM_MSD < '0' || pacDate->cM_MSD > '9' ) break;
+			if( pacDate->cM_LSD < '0' || pacDate->cM_MSD > '9' ) break;
+			if( pacDate->cDot1 != '.' ) break;
+
+			if( pacDate->cY_MSD < '0' || pacDate->cY_MSD > '9' ) break;
+			if( pacDate->cY_LSD < '0' || pacDate->cY_MSD > '9' ) break;
+			if( pacDate->cDot1 != '.' ) break;
+
+			bRetVal= true;
+		} //for()
+
+		m_szValue[ sizeof( time_S ) ] = '\0';		// make sure there is a string terminator
+		return( bRetVal );
+	};
+
+	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL )
+	{
+		m_szValue[0] = '\0';	// make sure there is a string terminator
+		memcpy( (void *)&m_acGeneralHeader.cStartTime, (char *)&m_szValue, sizeof( time_S ));
+
+		if( !bValidTimeValue() )
+		{
+			strcpy_s( m_szValue, "BAD!" );
+
+			if( peEdfStatus != NULL)
+			{
+				*peEdfStatus = EDF_TIME_ERROR;
+			}
+		}
 	
-}; //class Cedfplus
+		return( &m_szValue[0] );
+	};
+
+	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL )
+	{
+		m_szValue[0] = '\0';	// make sure there is a string terminator
+		strcpy_s( m_szValue, sizeof(date_S), (char *)&m_acGeneralHeader.cStartDate );
+
+		if( !bValidDateValue() )
+		{
+			strcpy_s( m_szValue, 5, "BAD!" );
+
+			if( peEdfStatus != NULL)
+			{
+				*peEdfStatus = EDF_DATE_ERROR;
+			}
+		}
+	
+		return( &m_szValue[0] );
+	};
+
+	char *pszGetNumberSignals()
+	{
+		return( &m_szValue[0] );
+	};
+
+	int iGetNumberSignals( edfStatus_E *peEdfStatus = NULL )
+	{
+		int iNumSig = 0;
+		m_szValue[0] = '\0';	// make sure there is a string terminator
+		strcpy_s( m_acGeneralHeader.cNumberSignals, sizeof( numberSignals_S ), m_szValue );
+
+		iNumSig = atoi( m_szValue);
+		if( errno == ERANGE )
+		{
+			strcpy_s( m_szValue, "BAD!" );
+			iNumSig = 0;
+
+			if( peEdfStatus != NULL)
+			{
+				*peEdfStatus = EDF_DATE_ERROR;
+			}
+		}
+			
+		return( iNumSig );
+	};
+
+	char *pszGetSignalLabel( int iSignalNumber )
+	{
+		return( &m_szValue[0] );
+	};
+
+	char *pszGetNumberRecords()
+	{
+		return( &m_szValue[0] );
+	};
+
+	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL )
+	{
+		return( &m_szValue[0] );
+	};
+
+private:	
+	ifstream *m_poEdfFile;
+	generalHeader_S m_acGeneralHeader;
+
+	char m_szValue[ sizeof( generalHeader_S)+1 ];	///< worst case length for return values
+
+}; //class CReadEDF
 
 #endif // EDFPLUS_H
