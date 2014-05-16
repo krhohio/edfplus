@@ -213,150 +213,22 @@ ns * 32 ascii : ns * reserved
 	edfStatus_E m_eEdfStatus;
 	char *m_pcFileData;
 
-	bool bValidTimeValue( void )
-	{
-		bool bRetVal = false;		// be pessimestic
-		time_S *pacTime = (time_S *)&m_szValue[0];
+	bool bValidTimeValue( void );
+	bool bValidDateValue( void );
 
-		// Fake for loop for common error exit:
-		for( bool allDone = false; allDone == false; allDone = true )
-		{
-			// \todo if leading space(s) are allowed in date then test for them here:	
-			if( pacTime->cH_MSD < '0' || pacTime->cH_MSD > '2' ) break;		// check for max 24-hour time
-			if( pacTime->cH_LSD < '0' || pacTime->cH_MSD > '9' ) break;		// allow 09:00 and 19:00
-			if( pacTime->cDot1 != '.' ) break;								// ensure a non-digit terminator for atoi()
-
-//			if( int iHH = atoi( (char *)pacTime->cH_MSD ) > 23 ) break;		// no atoi error checking since done above
-			int iHH = ((pacTime->cH_MSD & 0x0F) * 10 + (pacTime->cH_LSD & 0x0F));
-			if( ((pacTime->cH_MSD & 0x0F) * 10 + (pacTime->cH_LSD & 0x0F)) > 23 ) break;
-
-			if( pacTime->cM_MSD < '0' || pacTime->cM_MSD > '5' ) break;
-			if( pacTime->cM_LSD < '0' || pacTime->cM_MSD > '9' ) break;
-			if( pacTime->cDot2 != '.' ) break;
-
-			if( pacTime->cS_MSD < '0' || pacTime->cS_MSD > '5' ) break;
-			if( pacTime->cS_LSD < '0' || pacTime->cS_MSD > '9' ) break;
-
-			bRetVal= true;
-			break;
-		} //for()
-
-		m_szValue[ sizeof( time_S ) ] = '\0';		// make sure there is a string terminator
-
-		return( bRetVal );
-	};
-
-	bool bValidDateValue( void )
-	{
-		bool bRetVal = false;		// be pessimestic
-		date_S *pacDate = (date_S *)&m_szValue[0];
-
-		// Fake for loop for common error exit:
-		for( bool allDone = false; allDone == false; allDone = true )
-		{
-			// \todo if leading space(s) are allowed in date then test for them here:	
-			if( pacDate->cD_MSD < '0' || pacDate->cD_MSD > '3' ) break;		// check for max 31 days
-			if( pacDate->cD_LSD < '0' || pacDate->cD_MSD > '9' ) break;		// allow day 9, 19, 29
-			if( pacDate->cDot1 != '.' ) break;								// ensure a non-digit terminator for atoi()
-
-//			if( int iDD = atoi( (char *)pacDate->cD_MSD ) > 31 ) break;		// no atoi error checking since done above
-			int iDD = ((pacDate->cD_MSD & 0x0F) * 10 + (pacDate->cD_LSD & 0x0F));
-			if( ((pacDate->cD_MSD & 0x0F) * 10 + (pacDate->cD_LSD & 0x0F)) > 31 ) break;
-
-			if( pacDate->cM_MSD < '0' || pacDate->cM_MSD > '1' ) break;
-			if( pacDate->cM_LSD < '0' || pacDate->cM_MSD > '9' ) break;
-			if( pacDate->cDot2 != '.' ) break;
-
-			if( pacDate->cY_MSD < '0' || pacDate->cY_MSD > '9' ) break;
-			if( pacDate->cY_LSD < '0' || pacDate->cY_MSD > '9' ) break;
-			
-			bRetVal= true;
-			break;
-		} //for()
-
-		m_szValue[ sizeof( time_S ) ] = '\0';		// make sure there is a string terminator
-		return( bRetVal );
-	};
-
-	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL )
-	{
-		m_szValue[0] = '\0';	// make sure there is a string terminator
-		memcpy( (char *)&m_szValue, (void *)&m_acGeneralHeader.cStartTime,sizeof( time_S ));
-
-		if( !bValidTimeValue() )
-		{
-			strcpy_s( m_szValue, "BAD!" );
-
-			if( peEdfStatus != NULL)
-			{
-				*peEdfStatus = EDF_TIME_ERROR;
-			}
-		}
-	
-		return( &m_szValue[0] );
-	};
-
-	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL )
-	{
-		m_szValue[0] = '\0';	// make sure there is a string terminator
-		memcpy( (char *)&m_szValue, (void *)&m_acGeneralHeader.cStartDate, sizeof( date_S ));
-
-		if( !bValidDateValue() )
-		{
-			strcpy_s( m_szValue, 5, "BAD!" );
-
-			if( peEdfStatus != NULL)
-			{
-				*peEdfStatus = EDF_DATE_ERROR;
-			}
-		}
-	
-		return( &m_szValue[0] );
-	};
+	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL );
+	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL );
 
 	char *pszGetNumberSignals()
 	{
 		return( &m_szValue[0] );
 	};
 
-	int iGetNumberSignals( edfStatus_E *peEdfStatus = NULL )
-	{
-		int iNumSig = 0;
-		m_szValue[0] = '\0';	// make sure there is a string terminator
-		strcpy_s( m_acGeneralHeader.cNumberSignals, sizeof( numberSignals_S ), m_szValue );
+	int iGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
 
-		iNumSig = atoi( m_szValue);
-		if( errno == ERANGE )
-		{
-			strcpy_s( m_szValue, "BAD!" );
-			iNumSig = 0;
-
-			if( peEdfStatus != NULL)
-			{
-				*peEdfStatus = EDF_DATE_ERROR;
-			}
-		}
-			
-		return( iNumSig );
-	};
-
-	char *pszGetSignalLabel( int iSignalNumber )
-	{
-		m_szValue[0] = '\0';
-		return( &m_szValue[0] );
-	};
-
-	char *pszGetNumberRecords()
-	{
-		m_szValue[0] = '\0';
-		return( &m_szValue[0] );
-	};
-
-	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL )
-	{
-		m_szValue[0] = '\0';
-		return( &m_szValue[0] );
-	};
+	char *pszGetSignalLabel( int iSignalNumber );
+	char *pszGetNumberRecords();
+	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL );
 
 private:	
 	ifstream *m_poEdfFile;
