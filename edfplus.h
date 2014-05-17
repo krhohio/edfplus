@@ -152,15 +152,22 @@ class CReadEDF
 			char cNumberSignals[4];				///< 4 ascii : number of signals (ns) in data record 
 		};
 
-		struct label_S
+		enum edfDataSizes_E
 		{
-			char cLabel[16];					///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+			eFormatSize = 8,
+			eLocalPatientIDSize = 80,
+			eLocalRecordingIDSize = 80,
+			eStartDateSize = 8,
+			eNumberRecordsSize = 8,
 		};
 
-	struct generalHeader_S
+
+		// \todo Replace char usage with struct usage?
+
+	struct headerFixedLength_S
 	{
 		format_S            cFormat;            ///< 8 ascii : version of this data format (0) 
-        localPatientID_S    cLocalPatientID;    ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
+        char			    cLocalPatientID[eLocalPatientIDSize];    ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
 		localRecordingID_S  cLocalRecordingID;	///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
 		date_S				cStartDate;         ///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
 		time_S				cStartTime;         ///< 8 ascii : starttime of recording (hh.mm.ss) 
@@ -169,20 +176,32 @@ class CReadEDF
 		char				cNumberRecords[8];	///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
 		char				cDuration[8];		///< 8 ascii : duration of a data record, in seconds 
 		char				cNumberSignals[4];	///< 4 ascii : number of signals (ns) in data record 
-		char				cLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
-
-/*
-ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
-ns * 8 ascii : ns * physical dimension (e.g. uV or degreeC) 
-ns * 8 ascii : ns * physical minimum (e.g. -500 or 34) 
-ns * 8 ascii : ns * physical maximum (e.g. 500 or 40) 
-ns * 8 ascii : ns * digital minimum (e.g. -2048) 
-ns * 8 ascii : ns * digital maximum (e.g. 2047) 
-ns * 80 ascii : ns * prefiltering (e.g. HP:0.1Hz LP:75Hz) 
-ns * 8 ascii : ns * nr of samples in each data record 
-ns * 32 ascii : ns * reserved
-*/	
 	};
+
+	struct label_S
+	{
+		char cLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+	};
+
+	struct transducerType_S
+	{
+		char cTransducerType[80];	///< ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
+	};
+
+	struct headerVariableLength_S
+	{
+		char cLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+		char cTransducerType[80];	///< ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
+		char cPhysicalDimension[8];	///< ns * 8 ascii : ns * physical dimension (e.g. uV or degreeC) 
+		char cPhysicalMinimum[8];	///< ns * 8 ascii : ns * physical minimum (e.g. -500 or 34) 
+		char cPhysicalMaximum[8];	///< ns * 8 ascii : ns * physical maximum (e.g. 500 or 40) 
+		char cDigitalMinimum[8];	///< ns * 8 ascii : ns * digital minimum (e.g. -2048) 
+		char cDigitalMaximum[8];	///< ns * 8 ascii : ns * digital maximum (e.g. 2047) 
+		char cPrefiltering[80];		///< ns * 80 ascii : ns * prefiltering (e.g. HP:0.1Hz LP:75Hz) 
+		char cNumberSamples[8];		///< ns * 8 ascii : ns * nr of samples in each data record 
+		char cReserved[32];			///< ns * 32 ascii : ns * reserved
+	};
+
 /*
 DATA RECORD 
 nr of samples[1] * integer : first signal in the data record 
@@ -219,10 +238,11 @@ ns * 32 ascii : ns * reserved
 	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL );
 	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL );
 
-	char *pszGetNumberSignals()
-	{
-		return( &m_szValue[0] );
-	};
+	// \todo More/different example of using function overloading?
+	edfStatus_E eGetNumberRecords( char *pszNumberRecords );
+	edfStatus_E eGetNumberRecords( int *iNumberRecords );
+
+	char *pszGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
 
 	int iGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
 
@@ -232,9 +252,11 @@ ns * 32 ascii : ns * reserved
 
 private:	
 	ifstream *m_poEdfFile;
-	generalHeader_S m_acGeneralHeader;
+	headerFixedLength_S m_acHeaderFixedLength;
+	headerVariableLength_S *m_pacHeaderVariableLength;
 
-	char m_szValue[ sizeof( generalHeader_S)+1 ];	///< worst case length for return values
+	char m_szValue[ sizeof( headerFixedLength_S)+1 ];	///< worst case length for return values
+	int m_iValue;
 
 }; //class CReadEDF
 
