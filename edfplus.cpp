@@ -1,5 +1,4 @@
-﻿
-/*!
+﻿/*!
     \file
     \brief Contains class implementation for data extraction from a EDF Plus file.
 */

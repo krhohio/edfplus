@@ -5,7 +5,6 @@
 #include <errno.h>
 using namespace std;
 
-
 /*
 
 http://www.edfplus.info/specs/edf.html

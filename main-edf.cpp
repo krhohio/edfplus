@@ -1,3 +1,4 @@
+//
 // edfplus.cpp : Defines the entry point for the console application.
 //
 
@@ -39,7 +40,7 @@ int main(int argc, char* argv[])
 		cout << "Start Date = " << poEDF->pszGetStartDate() << endl;
 		cout << "Number of signals = " << poEDF->pszGetNumberSignals() << endl;
 		cout << "Number of data records = " << poEDF->pszGetNumberRecords() << endl;
-		cout << "Duration of a data record = " << poEDF->pszGetDuration() << endl;
+		cout << "Duration of a data record = " << poEDF->pszGetDuration() << " seconds" << endl;
 		
 		int iNumberSignals =0;
 		eEdfStatus = poEDF->eGetNumberSignals( &iNumberSignals );
