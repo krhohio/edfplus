@@ -10,14 +10,14 @@ using namespace std;
 
 /*!
 *   \brief Constructor
-*
 *   \param csInputFile - input file 
-*
 *   \return - status
 */
 
-CReadEDF::CReadEDF( char *pszInputFile )
+CReadEDF::CReadEDF( char *pszInputFile, edfStatus_E *peEdfStatus )
 {
+	m_eEdfStatus = EDF_VOID;		// signify undetermined status
+
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
 	{
@@ -28,22 +28,76 @@ CReadEDF::CReadEDF( char *pszInputFile )
 			m_eEdfStatus = CReadEDF::EDF_FILE_OPEN_ERROR;
 			break;
 		}
-		else
+
+		m_pcFileData = new char[sizeof(CReadEDF::headerFixedLength_S)+1 ];
 		{
-			m_pcFileData = new char[sizeof(CReadEDF::headerFixedLength_S)+1 ];
-			{
-				// error handling
-			}
+			// error handling
+		}
 
-			int iDebug = sizeof(CReadEDF::headerFixedLength_S);
-			int extracted = m_poEdfFile->read( (char *)&m_acHeaderFixedLength, sizeof(CReadEDF::headerFixedLength_S) ).gcount();
+		int iDebug = sizeof(CReadEDF::headerFixedLength_S);
+		int extracted = m_poEdfFile->read( (char *)&m_acHeaderFixedLength, sizeof(CReadEDF::headerFixedLength_S) ).gcount();
 
-			//m_acHeaderFixedLength = (HeaderFixedLength_S *)m_pacFileData;
-
-			m_eEdfStatus = CReadEDF::EDF_SUCCESS;
+		if( m_poEdfFile->fail() )
+		{
 			break;
-		} //...fail()
+		}
+
+		m_eEdfStatus = eGetNumberSignals( &m_iNumberSignals );
+
+		// Exit with error if unsuccessful getting the number of signals:
+		if(m_eEdfStatus != EDF_SUCCESS )
+		{
+			break;
+		}
+
+//		int iField;
+		int iSize;
+//		for( iField = 0; iField < eVariableHeaderFields; iField++ )
+//		{
+//		pacHeaderVariableLength[iSignal] = new char[sizeof(headerVariableLength_S)];
+
+		iSize = (m_iNumberSignals * eSignalLabelSize);
+		m_pacSignalLabels = new char[iSize];
+		m_poEdfFile->read( m_pacSignalLabels, iSize );
+
+		iSize = (m_iNumberSignals * eTransducerTypeSize);
+		m_pacTransducerTypes = new char[iSize];
+		m_poEdfFile->read( m_pacTransducerTypes, sizeof(headerVariableLength_S) );
+
+/*
+		pacPhysicalDimension[ePhysicalDimensionSize];
+cPhysicalMinimum[8];
+cPhysicalMaximum[8];
+cDigitalMinimum[8];
+cDigitalMaximum[8];
+cPrefiltering[80];
+cNumberSamples[8];
+acReserved[32];				
+*/
+
+			if( m_poEdfFile->fail() )
+			{
+				m_eEdfStatus = EDF_VOID;				
+				break;
+			}	
+
+		// Abort with error if the memory allocations were unsuccessful:
+		if(m_eEdfStatus != EDF_SUCCESS )
+		{
+			break;
+		}
+
+//		headerVariableLength_S *pacHeaderVariableLength = static_cast<headerVariableLength_S *>(&m_pacHeaderVariableLength[0] );
+
+		m_eEdfStatus = CReadEDF::EDF_SUCCESS;		// we are successfull when arriving here
+		break;
+
 	} //for()
+
+	if( peEdfStatus )
+	{
+		*peEdfStatus = m_eEdfStatus;
+	}
 
 } // CReadEDF()
 
@@ -225,8 +279,8 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* p
 {
 	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
 
-	memcpy( m_szValue, m_acHeaderFixedLength.acNumberSignals, sizeof( numberSignals_S ) );
-	m_szValue[ sizeof(numberSignals_S) ] = '\0' ;	// make sure there is a string terminator
+	memcpy( m_szValue, m_acHeaderFixedLength.acNumberSignals, eNumberSignalsSize );
+	m_szValue[ eNumberSignalsSize ] = '\0' ;	// make sure there is a string terminator
 
 	m_iNumberSignals = atoi( m_szValue);
 	if( errno == ERANGE )
@@ -238,7 +292,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* p
 		
 	if( piNumberSignals )
 	{
-		piNumberSignals = &m_iNumberSignals;
+		*piNumberSignals = m_iNumberSignals;
 	}
 
 	if( pszNumberSignals )
@@ -358,6 +412,8 @@ CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration
 */
 	char *CReadEDF::pszGetDuration( edfStatus_E *peEdfStatus )
 	{
+		cout << "*** Check for valid Header Record data here! ***" << endl;
+
 		m_eEdfStatus = eGetDuration( NULL, &m_szValue[0] );
 
 		if( peEdfStatus != NULL)
@@ -377,24 +433,46 @@ CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration
 char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 {
 	m_szValue[0] = '\0';	// make sure there is a string terminator
-	memcpy( &m_szValue, &m_acHeaderFixedLength.acStartDate, sizeof( date_S ));
-	m_szValue[ sizeof( date_S) ] = '\0';
+	int iNumberSignals = 0;
+	edfStatus_E eEdfStatus = EDF_SUCCESS;	// be optimistic
 
-	if( bValidDateValue() )
 	{
-		if( peEdfStatus != NULL)
-		{
-			*peEdfStatus = EDF_SUCCESS;
-		}
+	cout << "*** Check for valid Header Record data here! ***" << endl;
 	}
-	else
 
+	// Fake for loop for common error exit:
+	for( bool allDone = false; allDone == false; allDone = true )
+	{
+
+/*
+		eEdfStatus = eGetNumberSignals( &iNumberSignals );
+
+		if( eEdfStatus != EDF_SUCCESS )
+		{
+			break;
+		}
+*/
+
+		if( iSignalNumber > m_iNumberSignals )
+		{
+			eEdfStatus = EDF_INVALID_SIGNAL_REQUESTED;
+			break;
+		}
+
+		signalLabel_S *pacSignalLabels = (signalLabel_S *)m_pacSignalLabels;
+
+		memcpy( &m_szValue, &pacSignalLabels[iSignalNumber], eSignalLabelSize );
+		m_szValue[ eSignalLabelSize ] = '\0';
+
+	} // for()
+
+	if( eEdfStatus != EDF_SUCCESS )
 	{
 		strcpy_s( m_szValue, 5, "BAD!" );
 
 		if( peEdfStatus != NULL)
 		{
-			*peEdfStatus = EDF_DATE_ERROR;
+			*peEdfStatus = eEdfStatus;
 		}
 	}
 

@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 
 		for( int i=0; i < iNumberSignals; i++ )
 		{
-			cout << "Signal " << i+1 << " Name = " << poEDF->pszGetSignalLabel( i ) << endl;
+			cout << "Signal " << i+1 << " Label = " << poEDF->pszGetSignalLabel( i ) << endl;
 		}
 
 		break;
