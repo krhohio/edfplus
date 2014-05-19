@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[])
 {
-	int iRetVal = 1;			// be pessimistic
+	int iRetVal = EXIT_FAILURE;			// be pessimistic
 	
 	CReadEDF *poEDF = NULL;
 	CReadEDF::edfStatus_E eEdfStatus = CReadEDF::EDF_VOID;
@@ -41,7 +41,13 @@ int main(int argc, char* argv[])
 		cout << "Number of data records = " << poEDF->pszGetNumberRecords() << endl;
 		cout << "Duration of a data record = " << poEDF->pszGetDuration() << endl;
 		
-		int iNumberSignals = poEDF->iGetNumberSignals( &eEdfStatus );
+		int iNumberSignals =0;
+		eEdfStatus = poEDF->eGetNumberSignals( &iNumberSignals );
+
+		if( eEdfStatus != CReadEDF::EDF_SUCCESS )
+		{
+			break;
+		}
 
 		for( int i=0; i < iNumberSignals; i++ )
 		{
@@ -52,11 +58,16 @@ int main(int argc, char* argv[])
 
 	} // for()
 
+	if( eEdfStatus == CReadEDF::EDF_SUCCESS )
+	{
+		iRetVal = EXIT_SUCCESS ;
+	}
+
 	char cKey = 0;
 	cout << endl << "Press any key followed by the Enter key to continue: ";
 	cin >> cKey;
 
-	return(iRetVal);
+	return( iRetVal );
 
 } // main()
 

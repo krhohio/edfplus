@@ -95,12 +95,12 @@ class CReadEDF
 
         struct localPatientID_S
         {
-            char cLocalPatientID[80];
+            char acLocalPatientID[80];
         };
 
 		struct localRecordingID_S
         {
-            char cLocalRecordingID[80];
+            char acLocalRecordingID[80];
         };
 
         struct date_S
@@ -129,27 +129,27 @@ class CReadEDF
 
 		struct headerSize_S						
 		{
-			char cHeaderSize[8];				///< 8 ascii : number of bytes in header record
+			char acHeaderSize[8];				///< 8 ascii : number of bytes in header record
 		};
 		               
 		struct reserved44_S
 		{
-			char cReserved44[44];				///< 44 ascii : reserved 
+			char acReserved44[44];				///< 44 ascii : reserved 
 		};
 
 		struct numberRecords_S
 		{
-			char cNumberRecords[8];				///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
+			char acNumberRecords[8];				///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
 		};
 
 		struct duration_S
 		{
-			char cDuration[8];					///< 8 ascii : duration of a data record, in seconds 
+			char acDuration[8];					///< 8 ascii : duration of a data record, in seconds 
 		};
 
 		struct numberSignals_S
 		{
-			char cNumberSignals[4];				///< 4 ascii : number of signals (ns) in data record 
+			char acNumberSignals[4];				///< 4 ascii : number of signals (ns) in data record 
 		};
 
 		enum edfDataSizes_E
@@ -166,16 +166,16 @@ class CReadEDF
 
 	struct headerFixedLength_S
 	{
-		format_S            cFormat;            ///< 8 ascii : version of this data format (0) 
-        char			    cLocalPatientID[eLocalPatientIDSize];    ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
-		localRecordingID_S  cLocalRecordingID;	///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
-		date_S				cStartDate;         ///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
-		time_S				cStartTime;         ///< 8 ascii : starttime of recording (hh.mm.ss) 
-		char				cHeaderSize[8];		///< 8 ascii : number of bytes in header record 
-		char				cReserved[44];		///< 44 ascii : reserved 
-		char				cNumberRecords[8];	///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
-		char				cDuration[8];		///< 8 ascii : duration of a data record, in seconds 
-		char				cNumberSignals[4];	///< 4 ascii : number of signals (ns) in data record 
+		format_S            acFormat;            ///< 8 ascii : version of this data format (0) 
+        char			    acLocalPatientID[eLocalPatientIDSize];    ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
+		localRecordingID_S  acLocalRecordingID;	///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
+		date_S				acStartDate;         ///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
+		time_S				acStartTime;         ///< 8 ascii : starttime of recording (hh.mm.ss) 
+		char				acHeaderSize[8];		///< 8 ascii : number of bytes in header record 
+		char				acReserved[44];		///< 44 ascii : reserved 
+		char				acNumberRecords[8];	///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
+		char				acDuration[8];		///< 8 ascii : duration of a data record, in seconds 
+		char				acNumberSignals[4];	///< 4 ascii : number of signals (ns) in data record 
 	};
 
 	struct label_S
@@ -199,7 +199,7 @@ class CReadEDF
 		char cDigitalMaximum[8];	///< ns * 8 ascii : ns * digital maximum (e.g. 2047) 
 		char cPrefiltering[80];		///< ns * 80 ascii : ns * prefiltering (e.g. HP:0.1Hz LP:75Hz) 
 		char cNumberSamples[8];		///< ns * 8 ascii : ns * nr of samples in each data record 
-		char cReserved[32];			///< ns * 32 ascii : ns * reserved
+		char acReserved[32];			///< ns * 32 ascii : ns * reserved
 	};
 
 /*
@@ -238,25 +238,30 @@ ns * 32 ascii : ns * reserved
 	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL );
 	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL );
 
-	// \todo More/different example of using function overloading?
-	edfStatus_E eGetNumberRecords( char *pszNumberRecords );
-	edfStatus_E eGetNumberRecords( int *iNumberRecords );
-
+	edfStatus_E eGetNumberSignals( int* piNumberSignals = NULL, char* pszNumberSignals = NULL  );
 	char *pszGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
 
-	int iGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
+	edfStatus_E eGetNumberRecords( int* piNumberRecords = NULL, char* pszNumberRecords = NULL );
+	char *pszGetNumberRecords( edfStatus_E *peEdfStatus = NULL );
 
-	char *pszGetSignalLabel( int iSignalNumber );
-	char *pszGetNumberRecords();
+	edfStatus_E eGetDuration( int* piDuration = NULL, char* pszDuration = NULL );
 	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL );
+
+	char *pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus = NULL );
 
 private:	
 	ifstream *m_poEdfFile;
+	edfStatus_E m_edfStatus;
+
 	headerFixedLength_S m_acHeaderFixedLength;
 	headerVariableLength_S *m_pacHeaderVariableLength;
 
 	char m_szValue[ sizeof( headerFixedLength_S)+1 ];	///< worst case length for return values
 	int m_iValue;
+
+	int m_iNumberSignals;
+	int m_iNumberRecords;
+	int m_iDuration;
 
 }; //class CReadEDF
 

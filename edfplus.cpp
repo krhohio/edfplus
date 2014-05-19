@@ -160,7 +160,7 @@ bool CReadEDF::bValidDateValue( void )
 char *CReadEDF::pszGetStartTime( edfStatus_E *peEdfStatus )
 {
 	m_szValue[0] = '\0';	// make sure there is a string terminator
-	memcpy( (char *)&m_szValue, (void *)&m_acHeaderFixedLength.cStartTime,sizeof( time_S ));
+	memcpy( (char *)&m_szValue, (void *)&m_acHeaderFixedLength.acStartTime,sizeof( time_S ));
 
 	if( bValidTimeValue() )
 	{
@@ -184,16 +184,14 @@ char *CReadEDF::pszGetStartTime( edfStatus_E *peEdfStatus )
 
 /*!
 *   \brief Return the start date string.
-*
 *   \param peEdfStatus is loaded with status value if not null.
-*
 *   \return Start date string.
 */
 
 char *CReadEDF::pszGetStartDate( edfStatus_E *peEdfStatus )
 {
 	m_szValue[0] = '\0';	// make sure there is a string terminator
-	memcpy( &m_szValue, &m_acHeaderFixedLength.cStartDate, sizeof( date_S ));
+	memcpy( &m_szValue, &m_acHeaderFixedLength.acStartDate, sizeof( date_S ));
 	m_szValue[ sizeof( date_S) ] = '\0';
 
 	if( bValidDateValue() )
@@ -218,50 +216,38 @@ char *CReadEDF::pszGetStartDate( edfStatus_E *peEdfStatus )
 }
 
 /*!
-*   \brief Return the number of records.
-*   \param peEdfStatus is loaded with status value if not null.
-*   \return Pointer to string of ASCII data.
+*   \brief Return the number of signals
+*   \param peEdfStatus is loaded with status value if not null
+*   \return status of operation
 */
-	CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( char *pszNumberRecords )
+
+CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* pszNumberSignals )
+{
+	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+
+	memcpy( m_szValue, m_acHeaderFixedLength.acNumberSignals, sizeof( numberSignals_S ) );
+	m_szValue[ sizeof(numberSignals_S) ] = '\0' ;	// make sure there is a string terminator
+
+	m_iNumberSignals = atoi( m_szValue);
+	if( errno == ERANGE )
 	{
-		edfStatus_E	eRetVal = EDF_FILE_CONTENTS_ERROR;	// be pessimistic
-
-		memcpy( &pszNumberRecords, &m_acHeaderFixedLength.cStartDate, eNumberRecordsSize );
-		m_szValue[eNumberRecordsSize] = '\0';
-
-		atoi( m_szValue );
-		if( errno == ERANGE )
-		{
-			strcpy_s( m_szValue, "BAD!" );
-			eRetVal = EDF_SUCCESS;
-		}
-
-		pszNumberRecords = &m_szValue[0];
-		return( eRetVal );
-	};
-
-/*!
-*   \brief Return the number of records.
-*	\note No Hungarian notation here for function overloading.
-*   \param peEdfStatus is loaded with status value if not null.
-*   \return Integer Value.
-*/
-	CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int *iNumberRecords )
+		m_iNumberSignals = 0;
+		strcpy_s( m_szValue, "BAD!" );
+		m_eEdfStatus =	EDF_FILE_CONTENTS_ERROR;
+	}
+		
+	if( piNumberSignals )
 	{
-		edfStatus_E	eRetVal = EDF_FILE_CONTENTS_ERROR;	// be pessimistic
+		piNumberSignals = &m_iNumberSignals;
+	}
 
-		memcpy( &m_szValue, &m_acHeaderFixedLength.cStartDate, eNumberRecordsSize );
-		m_szValue[eNumberRecordsSize] = '\0';	// terminate string for atoi()
+	if( pszNumberSignals )
+	{
+		pszNumberSignals = &m_szValue[0];
+	}
 
-		m_iValue = atoi( m_szValue );
-		if( errno != ERANGE )
-		{
-			eRetVal = EDF_SUCCESS;
-		}
-
-		return( eRetVal );
-
-	};
+	return( m_eEdfStatus );
+}
 
 /*!
 *   \brief Return the number of signals
@@ -270,76 +256,147 @@ char *CReadEDF::pszGetStartDate( edfStatus_E *peEdfStatus )
 */
 	char *CReadEDF::pszGetNumberSignals( edfStatus_E *peEdfStatus )
 	{
+		m_eEdfStatus = eGetNumberSignals( NULL, &m_szValue[0] );
+
+		if( peEdfStatus != NULL)
+		{
+			peEdfStatus = &m_eEdfStatus;
+		}
+		
 		return( &m_szValue[0] );
 	};
 
 /*!
-*   \brief Return the number of signals
-*
-*   \param peEdfStatus is loaded with status value if not null
-*
-*   \return integer number of signals
+*   \brief Get the number of data records.
+*   \param peEdfStatus is loaded with status value if not null.
+*   \return Status of operation.
 */
-
-int CReadEDF::iGetNumberSignals( edfStatus_E *peEdfStatus )
+CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int* piNumberRecords, char* pszNumberRecords )
 {
-	int iNumSig = 0;
-	memcpy( m_szValue, m_acHeaderFixedLength.cNumberSignals, sizeof( numberSignals_S ) );
-	m_szValue[ sizeof(numberSignals_S) ] = '\0' ;	// make sure there is a string terminator
+	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
 
-	iNumSig = atoi( m_szValue);
+	memcpy( m_szValue, m_acHeaderFixedLength.acNumberRecords, sizeof( numberRecords_S ) );
+	m_szValue[ sizeof(numberRecords_S) ] = '\0' ;	// make sure there is a string terminator
+
+	m_iNumberRecords = atoi( m_szValue);
 	if( errno == ERANGE )
 	{
+		m_iNumberRecords = 0;
 		strcpy_s( m_szValue, "BAD!" );
-		iNumSig = 0;
+		m_eEdfStatus =	EDF_FILE_CONTENTS_ERROR;
+	}
+		
+	if( piNumberRecords )
+	{
+		piNumberRecords = &m_iNumberRecords;
+	}
+
+	if( pszNumberRecords )
+	{
+		pszNumberRecords = &m_szValue[0];
+	}
+
+	return( m_eEdfStatus );
+}
+
+/*!
+*   \brief Return the number of data records.
+*   \param peEdfStatus is loaded with status value if not null.
+*   \return Pointer to string of ASCII data.
+*/
+	char *CReadEDF::pszGetNumberRecords( edfStatus_E *peEdfStatus )
+	{
+		m_eEdfStatus = eGetNumberRecords( NULL, &m_szValue[0] );
+
+		if( peEdfStatus != NULL)
+		{
+			peEdfStatus = &m_eEdfStatus;
+		}
+		
+		return( &m_szValue[0] );
+	};
+
+/*!
+*   \brief Get the duration of a data record.
+*   \param piDuration is loaded with the integer duration if not a null pointer.
+*   \param pszDuration is loaded with the string duration if not a null pointer.
+*   \return status of operation.
+*/
+
+CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration )
+{
+	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+
+	memcpy( m_szValue, m_acHeaderFixedLength.acDuration, sizeof( duration_S ) );
+	m_szValue[ sizeof(duration_S) ] = '\0' ;	// make sure there is a string terminator
+
+	m_iDuration = atoi( m_szValue );
+	if( errno == ERANGE )
+	{
+		m_iDuration = 0;
+		strcpy_s( m_szValue, "BAD!" );
+		m_eEdfStatus =	EDF_FILE_CONTENTS_ERROR;
+	}
+		
+	if( piDuration )
+	{
+		piDuration = &m_iDuration;
+	}
+
+	if( pszDuration )
+	{
+		pszDuration = &m_szValue[0];
+	}
+
+	return( m_eEdfStatus );
+}
+
+/*!
+*   \brief Return the duration of a data record.
+*   \param peEdfStatus is loaded with status value if not null.
+*   \return pointer to string of ASCII data.
+*/
+	char *CReadEDF::pszGetDuration( edfStatus_E *peEdfStatus )
+	{
+		m_eEdfStatus = eGetDuration( NULL, &m_szValue[0] );
+
+		if( peEdfStatus != NULL)
+		{
+			peEdfStatus = &m_eEdfStatus;
+		}
+		
+		return( &m_szValue[0] );
+	};
+
+/*!
+*   \brief Get a signal label.
+*   \param peEdfStatus is loaded with status value if not null.
+*   \return Signal label.
+*/
+
+char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
+{
+	m_szValue[0] = '\0';	// make sure there is a string terminator
+	memcpy( &m_szValue, &m_acHeaderFixedLength.acStartDate, sizeof( date_S ));
+	m_szValue[ sizeof( date_S) ] = '\0';
+
+	if( bValidDateValue() )
+	{
+		if( peEdfStatus != NULL)
+		{
+			*peEdfStatus = EDF_SUCCESS;
+		}
+	}
+	else
+
+	{
+		strcpy_s( m_szValue, 5, "BAD!" );
 
 		if( peEdfStatus != NULL)
 		{
 			*peEdfStatus = EDF_DATE_ERROR;
 		}
 	}
-		
-	return( iNumSig );
-}
 
-/*!
-*   \brief 
-*
-*   \param peEdfStatus is loaded with status value if not null
-*
-*   \return integer number of signals
-*/
-
-char *CReadEDF::pszGetSignalLabel( int iSignalNumber )
-{
-	m_szValue[0] = '\0';
-	return( &m_szValue[0] );
-}
-
-/*!
-*   \brief 
-*
-*   \param peEdfStatus is loaded with status value if not null
-*
-*   \return integer number of signals
-*/
-
-char *CReadEDF::pszGetNumberRecords()
-{
-	m_szValue[0] = '\0';
-	return( &m_szValue[0] );
-}
-
-/*!
-*   \brief 
-*
-*   \param peEdfStatus is loaded with status value if not null
-*
-*   \return integer number of signals
-*/
-
-char *CReadEDF::pszGetDuration( edfStatus_E *eEdfStatus )
-{
-	m_szValue[0] = '\0';
 	return( &m_szValue[0] );
 }
