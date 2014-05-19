@@ -78,16 +78,16 @@ class CReadEDF
 	public:
 		enum edfStatus_E
 		{
-			EDF_SUCCESS,
+			EDF_SUCCESS=0,					///< keep as 0 for logical OR usage!
 			EDF_VOID,						///< enum used when status is not yet available or updated
 			EDF_FILE_OPEN_ERROR,
 			EDF_FILE_CONTENTS_ERROR,
 			EDF_TIME_ERROR,
 			EDF_DATE_ERROR,
+			EDF_INVALID_SIGNAL_REQUESTED,
 		};
 
-		enum eGetEDFStatus;
-		
+	
 		struct format_S
         {
             char format[8];
@@ -132,9 +132,9 @@ class CReadEDF
 			char acHeaderSize[8];				///< 8 ascii : number of bytes in header record
 		};
 		               
-		struct reserved44_S
+		struct reserved_S
 		{
-			char acReserved44[44];				///< 44 ascii : reserved 
+			char acReserved[44];				///< 44 ascii : reserved 
 		};
 
 		struct numberRecords_S
@@ -152,54 +152,66 @@ class CReadEDF
 			char acNumberSignals[4];				///< 4 ascii : number of signals (ns) in data record 
 		};
 
-		enum edfDataSizes_E
+		// \todo make these uppercase; i.e. eFormatSize -> EDF_FORMAT_SIZE
+
+		enum headerFixedLengthSizes_E
 		{
-			eFormatSize = 8,
-			eLocalPatientIDSize = 80,
-			eLocalRecordingIDSize = 80,
-			eStartDateSize = 8,
-			eNumberRecordsSize = 8,
+			eFormatSize = sizeof( format_S),
+			eLocalPatientIDSize = sizeof( localPatientID_S),
+			eLocalRecordingIDSize = sizeof( localRecordingID_S),
+			eStartDateSize = sizeof(date_S),
+			eStartTimeSize = sizeof(time_S),
+			eHeaderSize = sizeof(headerSize_S),
+			eReservedSize = sizeof(reserved_S),
+			eNumberRecordsSize = sizeof(numberRecords_S),
+			eDurationSize = sizeof(duration_S),
+			eNumberSignalsSize = sizeof(numberSignals_S),
 		};
 
 
-		// \todo Replace char usage with struct usage?
-
 	struct headerFixedLength_S
 	{
-		format_S            acFormat;            ///< 8 ascii : version of this data format (0) 
-        char			    acLocalPatientID[eLocalPatientIDSize];    ///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
-		localRecordingID_S  acLocalRecordingID;	///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
-		date_S				acStartDate;         ///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
-		time_S				acStartTime;         ///< 8 ascii : starttime of recording (hh.mm.ss) 
-		char				acHeaderSize[8];		///< 8 ascii : number of bytes in header record 
-		char				acReserved[44];		///< 44 ascii : reserved 
-		char				acNumberRecords[8];	///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
-		char				acDuration[8];		///< 8 ascii : duration of a data record, in seconds 
-		char				acNumberSignals[4];	///< 4 ascii : number of signals (ns) in data record 
+		format_S	acFormat;									///< 8 ascii : version of this data format (0) 
+		char		acLocalPatientID[eLocalPatientIDSize];		///< 80 ascii : local patient identification (mind item 3 of the additional EDF+ specs)
+		char		acLocalRecordingID[eLocalRecordingIDSize];	///< 80 ascii : local recording identification (mind item 4 of the additional EDF+ specs)
+		date_S		acStartDate;								///< 8 ascii : startdate of recording (dd.mm.yy) (mind item 2 of the additional EDF+ specs)
+		time_S		acStartTime;								///< 8 ascii : starttime of recording (hh.mm.ss) 
+		char		acHeaderSize[eHeaderSize];					///< 8 ascii : number of bytes in header record 
+		char		acReserved[eReservedSize];					///< 44 ascii : reserved 
+		char		acNumberRecords[eNumberRecordsSize];			///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
+		char		acDuration[eDurationSize];					///< 8 ascii : duration of a data record, in seconds 
+		char		acNumberSignals[eNumberSignalsSize];			///< 4 ascii : number of signals (ns) in data record 
 	};
 
-	struct label_S
+	struct signalLabel_S
 	{
-		char cLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+		char acSignalLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
 	};
 
 	struct transducerType_S
 	{
-		char cTransducerType[80];	///< ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
+		char acTransducerType[80];	///< ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
+	};
+
+	enum eHeaderVariableLengthSizes_E
+	{
+		eVariableHeaderFields = 9,			// don't count the Reserved fields
+		eSignalLabelSize = sizeof( signalLabel_S),
+		eTransducerTypeSize = sizeof( transducerType_S),
 	};
 
 	struct headerVariableLength_S
 	{
-		char cLabel[16];			///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
-		char cTransducerType[80];	///< ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
-		char cPhysicalDimension[8];	///< ns * 8 ascii : ns * physical dimension (e.g. uV or degreeC) 
-		char cPhysicalMinimum[8];	///< ns * 8 ascii : ns * physical minimum (e.g. -500 or 34) 
-		char cPhysicalMaximum[8];	///< ns * 8 ascii : ns * physical maximum (e.g. 500 or 40) 
-		char cDigitalMinimum[8];	///< ns * 8 ascii : ns * digital minimum (e.g. -2048) 
-		char cDigitalMaximum[8];	///< ns * 8 ascii : ns * digital maximum (e.g. 2047) 
-		char cPrefiltering[80];		///< ns * 80 ascii : ns * prefiltering (e.g. HP:0.1Hz LP:75Hz) 
-		char cNumberSamples[8];		///< ns * 8 ascii : ns * nr of samples in each data record 
-		char acReserved[32];			///< ns * 32 ascii : ns * reserved
+		char acSignalLabel[eSignalLabelSize];		///< ns * 16 ascii : ns * label (e.g. EEG Fpz-Cz or Body temp) (mind item 9 of the additional EDF+ specs)
+		char acTransducerType[eTransducerTypeSize];	///< ns * 80 ascii : ns * transducer type (e.g. AgAgCl electrode) 
+		char acPhysicalDimension[8];				///< ns * 8 ascii : ns * physical dimension (e.g. uV or degreeC) 
+		char acPhysicalMinimum[8];					///< ns * 8 ascii : ns * physical minimum (e.g. -500 or 34) 
+		char acPhysicalMaximum[8];					///< ns * 8 ascii : ns * physical maximum (e.g. 500 or 40) 
+		char acDigitalMinimum[8];					///< ns * 8 ascii : ns * digital minimum (e.g. -2048) 
+		char acDigitalMaximum[8];					///< ns * 8 ascii : ns * digital maximum (e.g. 2047) 
+		char acPrefiltering[80];					///< ns * 80 ascii : ns * prefiltering (e.g. HP:0.1Hz LP:75Hz) 
+		char acNumberSamples[8];					///< ns * 8 ascii : ns * nr of samples in each data record 
+		char acReserved[32];						///< ns * 32 ascii : ns * reserved
 	};
 
 /*
@@ -226,7 +238,7 @@ ns * 8 ascii : ns * nr of samples in each data record
 ns * 32 ascii : ns * reserved
 */
 
-	CReadEDF( char *csInputFile );
+	CReadEDF( char *csInputFile, edfStatus_E *peEdfStatus = NULL );
 	~CReadEDF( void );
 
 	edfStatus_E m_eEdfStatus;
@@ -253,6 +265,8 @@ private:
 	ifstream *m_poEdfFile;
 	edfStatus_E m_edfStatus;
 
+	enum eGetEDFStatus;
+
 	headerFixedLength_S m_acHeaderFixedLength;
 	headerVariableLength_S *m_pacHeaderVariableLength;
 
@@ -262,6 +276,18 @@ private:
 	int m_iNumberSignals;
 	int m_iNumberRecords;
 	int m_iDuration;
+
+//	char **pacHeaderVariableLength;
+	char *m_pacSignalLabels;
+	char *m_pacTransducerTypes;
+	char *m_pacPhysicalDimensions;
+	char *m_pacPhysicalMinimums;
+	char *m_pacPhysicalMaximums;
+	char *m_pacDigitalMinimums;
+	char *m_pacDigitalMaximums;
+	char *m_pacPrefilterings;
+	char *m_pacNumberSamples;
+	char *m_pacReserveds;
 
 }; //class CReadEDF
 
