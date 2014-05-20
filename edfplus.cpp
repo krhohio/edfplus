@@ -49,36 +49,58 @@ CReadEDF::CReadEDF( char *pszInputFile, edfStatus_E *peEdfStatus )
 			break;
 		}
 
-//		int iField;
 		int iSize;
-//		for( iField = 0; iField < eVariableHeaderFields; iField++ )
-//		{
-//		pacHeaderVariableLength[iSignal] = new char[sizeof(headerVariableLength_S)];
 
+		// 1st Variable Length Header Field:
 		iSize = (m_iNumberSignals * eSignalLabelSize);
 		m_pacSignalLabels = new char[iSize];
 		m_poEdfFile->read( m_pacSignalLabels, iSize );
 
+		// 2nd Variable Length Header Field:
 		iSize = (m_iNumberSignals * eTransducerTypeSize);
 		m_pacTransducerTypes = new char[iSize];
-		m_poEdfFile->read( m_pacTransducerTypes, sizeof(headerVariableLength_S) );
+		m_poEdfFile->read( m_pacTransducerTypes, iSize );
 
-/*
-		pacPhysicalDimension[ePhysicalDimensionSize];
-cPhysicalMinimum[8];
-cPhysicalMaximum[8];
-cDigitalMinimum[8];
-cDigitalMaximum[8];
-cPrefiltering[80];
-cNumberSamples[8];
-acReserved[32];				
-*/
+		// 3rd Variable Length Header Field:
+		iSize = (m_iNumberSignals * ePhysicalDimensionSize);
+		m_pacPhysicalDimensions = new char[iSize];
+		m_poEdfFile->read( m_pacPhysicalDimensions, iSize );
 
-			if( m_poEdfFile->fail() )
-			{
-				m_eEdfStatus = EDF_VOID;				
-				break;
-			}	
+		// 4th Variable Length Header Field:
+		iSize = (m_iNumberSignals * ePhysicalMinimumSize);
+		m_pacPhysicalMinimums = new char[iSize];
+		m_poEdfFile->read( m_pacPhysicalMinimums, iSize );
+
+		// 5th Variable Length Header Field:
+		iSize = (m_iNumberSignals * ePhysicalMaximumSize);
+		m_pacPhysicalMaximums = new char[iSize];
+		m_poEdfFile->read( m_pacPhysicalMaximums, iSize );
+
+		// 6th Variable Length Header Field:
+		iSize = (m_iNumberSignals * eDigitalMinimumSize);
+		m_pacDigitalMinimums = new char[iSize];
+		m_poEdfFile->read( m_pacDigitalMinimums, iSize );
+
+		// 7th Variable Length Header Field:
+		iSize = (m_iNumberSignals * eDigitalMaximumSize);
+		m_pacDigitalMaximums = new char[iSize];
+		m_poEdfFile->read( m_pacDigitalMaximums, iSize );
+
+		// 8th Variable Length Header Field:
+		iSize = (m_iNumberSignals * ePrefilteringSize);
+		m_pacPrefilterings = new char[iSize];
+		m_poEdfFile->read( m_pacPrefilterings, iSize );
+
+		// 9th Variable Length Header Field:
+		iSize = (m_iNumberSignals * eNumberSamplesSize);
+		m_pacNumberSamples = new char[iSize];
+		m_poEdfFile->read( m_pacNumberSamples, iSize );
+
+		if( m_poEdfFile->fail() )
+		{
+			m_eEdfStatus = EDF_VOID;				
+			break;
+		}	
 
 		// Abort with error if the memory allocations were unsuccessful:
 		if(m_eEdfStatus != EDF_SUCCESS )
@@ -476,4 +498,98 @@ char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 	}
 
 	return( &m_szValue[0] );
+}
+
+/*!
+*   \brief Get number of signal samples
+*   \param iSignalNumber must contain the desired signal number.
+*   \param peEdfStatus is loaded with status value if not null.
+*   \return Number of signal samples.
+*/
+int CReadEDF::iGetNumberSamples( int iSignalNumber, edfStatus_E *peEdfStatus )
+{
+	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+	int iNumberSamples = 0;
+
+	numberSamples_S *pacNumberSamples = (numberSamples_S *)m_pacNumberSamples;
+	memcpy( &m_szValue, &pacNumberSamples[iSignalNumber], eNumberSamplesSize );
+
+	iNumberSamples = atoi( m_szValue );
+	if( errno == ERANGE )
+	{
+		m_eEdfStatus = EDF_FILE_CONTENTS_ERROR;
+	}
+
+	if( peEdfStatus != NULL )
+	{
+		*peEdfStatus = m_eEdfStatus;
+	}
+
+	return( iNumberSamples );
+}
+
+
+/*!
+*   \brief Get a sample from a signal
+*   \param peEdfStatus is loaded with status value if not null.
+*   \return Status of operation.
+*/
+
+CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber, int *piSampleValue )
+{
+	int iSampleValue = 0;	
+	
+	m_eEdfStatus = EDF_VOID;
+
+	// Fake for loop for common error exit:
+	for( bool allDone = false; allDone == false; allDone = true )
+	{
+		if( m_poEdfFile == NULL )
+		{
+			break;
+		}
+
+		if( iSignalNumber > m_iNumberSignals )
+		{
+			m_eEdfStatus = EDF_INVALID_SIGNAL_REQUESTED;
+			break;
+		}
+
+		int iOffsetPastHeaders = sizeof(headerFixedLength_S) + (sizeof(headerVariableLength_S) * m_iNumberSignals);
+		int iOffsetToSignal = iOffsetPastHeaders;
+
+		for( int iThisSignal = 0; iThisSignal < m_iNumberSignals; iThisSignal++ )
+		{
+			iOffsetToSignal +=  iGetNumberSamples( iThisSignal, &m_eEdfStatus );
+			if( m_eEdfStatus != EDF_SUCCESS )
+			{
+				break;
+			}
+		}
+
+		if( m_eEdfStatus != EDF_SUCCESS )
+		{
+			break;
+		}
+
+		int iOffsetToSample = iOffsetToSignal + (iSignalNumber * eSampleSize);
+	
+		m_poEdfFile->seekg( iOffsetToSample );
+		cout << "File currently at byte: " << m_poEdfFile->tellg() << endl;
+
+		if( m_poEdfFile->fail() )
+		{
+			break;
+		}
+
+		m_poEdfFile->read( reinterpret_cast<char *>(&iSampleValue), eSampleSize );
+
+		if( piSampleValue != NULL )
+		{
+			*piSampleValue = iSampleValue;
+		}
+
+	} //for()
+
+	return( m_eEdfStatus );
 }

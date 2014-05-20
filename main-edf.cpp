@@ -53,6 +53,11 @@ int main(int argc, char* argv[])
 		for( int i=0; i < iNumberSignals; i++ )
 		{
 			cout << "Signal " << i+1 << " Label = " << poEDF->pszGetSignalLabel( i ) << endl;
+
+			int iSampleValue = 0;
+			eEdfStatus = poEDF->eGetSample( i, 1, &iSampleValue );
+
+			cout << "First Sample = " << iSampleValue << endl;
 		}
 
 		break;
