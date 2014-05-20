@@ -1,6 +1,28 @@
-//
-// edfplus.cpp : Defines the entry point for the console application.
-//
+/*!
+	File name: $HeadURL:
+	\file
+    \brief Defines the entry point for the console application (using edfplus.*)
+
+	\note Enter command line argument for the EDF input file in Microsoft Visual Studio
+	      by adding it to <Project | Properties | Configuration Properties | Debug>
+		  in the <Command Arguments> edit box.
+
+		  EDF input files previously used:
+		  "C:\2014-05-00 MindWare Programming Exercise\TestFile1.edf" (and TestFile2.edf)
+*/
+
+/*!
+	\mainpage This C++ class was written for a "Programming Exercise" as part of a job application:
+	On Tue, May 13, 2014 at 11:49 AM, Eric wrote:
+	Hi Kent,
+	Thanks again for taking the time to meet with us last week. For the next step we have put together a
+	short programming exercise for you to work on that will allow us to see your coding style and practices.
+	You will find the details of the exercise in the attached PDF along with 2 test files which will help
+	you test your solution. The file specification that you can reference when working on the exercise can
+	be found here. http://www.edfplus.info/specs/edf.html If at any point you have questions feel free to ask.
+	Please send back the completed exercise no later than one week from today (Tuesday May 20th) but it is
+	perfectly acceptable to send it in before then if you finish early. Thanks and good luck!
+*/
 
 #include <iostream>
 #include "edfplus.h"
@@ -17,7 +39,11 @@ int main(int argc, char* argv[])
     {
 		CReadEDF::edfStatus_E eEdfStatus;
 		
-		if( argc != 2 )
+		if( argc == 2 )
+		{
+		
+		}
+		else
 		{
 			cout << endl << "Please enter an input EDF filename as a command line argument!" << endl
 				 << "(example: ""ReadEDF c:\\TestFile1.edf"")";
@@ -26,9 +52,9 @@ int main(int argc, char* argv[])
 		
 		poEDF = new CReadEDF( argv[1] );
 
-		if( poEDF->m_eEdfStatus != CReadEDF::EDF_SUCCESS )
+		if( !poEDF->bReadyStatus( &eEdfStatus ) )
 		{
-			if( poEDF->m_eEdfStatus == CReadEDF::EDF_FILE_OPEN_ERROR )
+			if( eEdfStatus == CReadEDF::EDF_FILE_OPEN_ERROR )
 			{
 				cout << "File read error - please check the path and spelling: " << endl
 					 << "(" << argv[1] << ")" << endl;
@@ -36,6 +62,7 @@ int main(int argc, char* argv[])
 			break;		// exit with error status
 		}
 
+		cout << endl << "ReadEDF program by Kent Hamon, 2014-05-20" << endl << endl;
 		cout << "Start Time = " << poEDF->pszGetStartTime() << endl;
 		cout << "Start Date = " << poEDF->pszGetStartDate() << endl;
 		cout << "Number of signals = " << poEDF->pszGetNumberSignals() << endl;

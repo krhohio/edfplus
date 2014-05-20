@@ -1,4 +1,5 @@
 ﻿/*!
+	File name: $HeadURL:
     \file
     \brief Contains class implementation for data extraction from a EDF Plus file.
 */
@@ -15,7 +16,8 @@ using namespace std;
 
 CReadEDF::CReadEDF( char *pszInputFile, edfStatus_E *peEdfStatus )
 {
-	m_eEdfStatus = EDF_VOID;		// signify undetermined status
+	m_eStaticStatus = EDF_VOID;		// signify undetermined status
+	m_eDynamicStatus = EDF_VOID;		// signify undetermined status
 
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
@@ -24,7 +26,7 @@ CReadEDF::CReadEDF( char *pszInputFile, edfStatus_E *peEdfStatus )
 
 		if( m_poEdfFile->fail() )
 		{
-			m_eEdfStatus = CReadEDF::EDF_FILE_OPEN_ERROR;
+			m_eDynamicStatus = EDF_FILE_OPEN_ERROR;
 			break;
 		}
 
@@ -41,83 +43,83 @@ CReadEDF::CReadEDF( char *pszInputFile, edfStatus_E *peEdfStatus )
 			break;
 		}
 
-		m_eEdfStatus = eGetNumberSignals( &m_iNumberSignals );
+		m_eDynamicStatus = eGetNumberSignals( &m_iNumberSignals );
 
 		// Exit with error if unsuccessful getting the number of signals:
-		if(m_eEdfStatus != EDF_SUCCESS )
+		if(m_eDynamicStatus != EDF_SUCCESS )
 		{
 			break;
 		}
 
-		int iSize;
+		int iSize = 0;
+		
+		// Be pessimistic about reading all the variable lenght header fields:
+		m_eDynamicStatus = CReadEDF::EDF_FILE_CONTENTS_ERROR;
 
 		// 1st Variable Length Header Field:
 		iSize = (m_iNumberSignals * eSignalLabelSize);
 		m_pacSignalLabels = new char[iSize];
 		m_poEdfFile->read( m_pacSignalLabels, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 2nd Variable Length Header Field:
 		iSize = (m_iNumberSignals * eTransducerTypeSize);
 		m_pacTransducerTypes = new char[iSize];
 		m_poEdfFile->read( m_pacTransducerTypes, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 3rd Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePhysicalDimensionSize);
 		m_pacPhysicalDimensions = new char[iSize];
 		m_poEdfFile->read( m_pacPhysicalDimensions, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 4th Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePhysicalMinimumSize);
 		m_pacPhysicalMinimums = new char[iSize];
 		m_poEdfFile->read( m_pacPhysicalMinimums, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 5th Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePhysicalMaximumSize);
 		m_pacPhysicalMaximums = new char[iSize];
 		m_poEdfFile->read( m_pacPhysicalMaximums, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 6th Variable Length Header Field:
 		iSize = (m_iNumberSignals * eDigitalMinimumSize);
 		m_pacDigitalMinimums = new char[iSize];
 		m_poEdfFile->read( m_pacDigitalMinimums, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 7th Variable Length Header Field:
 		iSize = (m_iNumberSignals * eDigitalMaximumSize);
 		m_pacDigitalMaximums = new char[iSize];
 		m_poEdfFile->read( m_pacDigitalMaximums, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 8th Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePrefilteringSize);
 		m_pacPrefilterings = new char[iSize];
 		m_poEdfFile->read( m_pacPrefilterings, iSize );
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
 
 		// 9th Variable Length Header Field:
 		iSize = (m_iNumberSignals * eNumberSamplesSize);
 		m_pacNumberSamples = new char[iSize];
 		m_poEdfFile->read( m_pacNumberSamples, iSize );
-
-		if( m_poEdfFile->fail() )
-		{
-			m_eEdfStatus = EDF_VOID;				
-			break;
-		}	
-
-		// Abort with error if the memory allocations were unsuccessful:
-		if(m_eEdfStatus != EDF_SUCCESS )
-		{
-			break;
-		}
-
-//		headerVariableLength_S *pacHeaderVariableLength = static_cast<headerVariableLength_S *>(&m_pacHeaderVariableLength[0] );
-
-		m_eEdfStatus = CReadEDF::EDF_SUCCESS;		// we are successfull when arriving here
+		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		
+		m_eDynamicStatus = EDF_SUCCESS;			// We are successfull when arriving here
 		break;
 
 	} //for()
 
+	m_eStaticStatus = m_eDynamicStatus;		// Set the static (constructor) status
+
 	if( peEdfStatus )
 	{
-		*peEdfStatus = m_eEdfStatus;
+		*peEdfStatus = m_eStaticStatus;
 	}
 
 } // CReadEDF()
@@ -141,11 +143,8 @@ CReadEDF::~CReadEDF( void )
 
 /*!
 *   \brief Validate time value.
-*
 *	\note **The time value to be validated must already be loaded into m_szValue **
-*
 *   \param (none)
-*
 *   \return (none)
 */
 
@@ -184,11 +183,8 @@ bool CReadEDF::bValidTimeValue( void )
 
 /*!
 *   \brief Validate date value.
-*
 *	\note **The date value to be validated must already be loaded into m_szValue. **
-*
 *   \param (none)
-*
 *   \return (none)
 */
 
@@ -226,9 +222,7 @@ bool CReadEDF::bValidDateValue( void )
 
 /*!
 *   \brief Return the start time string.
-*
 *   \param peEdfStatus is loaded with status value if not null.
-*
 *   \return Start time string.
 */
 
@@ -298,7 +292,7 @@ char *CReadEDF::pszGetStartDate( edfStatus_E *peEdfStatus )
 
 CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* pszNumberSignals )
 {
-	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+	m_eDynamicStatus =	EDF_SUCCESS;	// be optimistic
 
 	memcpy( m_szValue, m_acHeaderFixedLength.acNumberSignals, eNumberSignalsSize );
 	m_szValue[ eNumberSignalsSize ] = '\0' ;	// make sure there is a string terminator
@@ -308,7 +302,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* p
 	{
 		m_iNumberSignals = 0;
 		strcpy_s( m_szValue, "BAD!" );
-		m_eEdfStatus =	EDF_FILE_CONTENTS_ERROR;
+		m_eDynamicStatus =	EDF_FILE_CONTENTS_ERROR;
 	}
 		
 	if( piNumberSignals )
@@ -321,7 +315,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* p
 		pszNumberSignals = &m_szValue[0];
 	}
 
-	return( m_eEdfStatus );
+	return( m_eDynamicStatus );
 }
 
 /*!
@@ -331,11 +325,11 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* p
 */
 	char *CReadEDF::pszGetNumberSignals( edfStatus_E *peEdfStatus )
 	{
-		m_eEdfStatus = eGetNumberSignals( NULL, &m_szValue[0] );
+		m_eDynamicStatus = eGetNumberSignals( NULL, &m_szValue[0] );
 
 		if( peEdfStatus != NULL)
 		{
-			peEdfStatus = &m_eEdfStatus;
+			peEdfStatus = &m_eDynamicStatus;
 		}
 		
 		return( &m_szValue[0] );
@@ -346,9 +340,10 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberSignals( int* piNumberSignals, char* p
 *   \param peEdfStatus is loaded with status value if not null.
 *   \return Status of operation.
 */
+
 CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int* piNumberRecords, char* pszNumberRecords )
 {
-	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+	m_eDynamicStatus =	EDF_SUCCESS;	// be optimistic
 
 	memcpy( m_szValue, m_acHeaderFixedLength.acNumberRecords, sizeof( numberRecords_S ) );
 	m_szValue[ sizeof(numberRecords_S) ] = '\0' ;	// make sure there is a string terminator
@@ -358,7 +353,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int* piNumberRecords, char* p
 	{
 		m_iNumberRecords = 0;
 		strcpy_s( m_szValue, "BAD!" );
-		m_eEdfStatus =	EDF_FILE_CONTENTS_ERROR;
+		m_eDynamicStatus =	EDF_FILE_CONTENTS_ERROR;
 	}
 		
 	if( piNumberRecords )
@@ -371,7 +366,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int* piNumberRecords, char* p
 		pszNumberRecords = &m_szValue[0];
 	}
 
-	return( m_eEdfStatus );
+	return( m_eDynamicStatus );
 }
 
 /*!
@@ -379,13 +374,13 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int* piNumberRecords, char* p
 *   \param peEdfStatus is loaded with status value if not null.
 *   \return Pointer to string of ASCII data.
 */
-	char *CReadEDF::pszGetNumberRecords( edfStatus_E *peEdfStatus )
+char *CReadEDF::pszGetNumberRecords( edfStatus_E *peEdfStatus )
 	{
-		m_eEdfStatus = eGetNumberRecords( NULL, &m_szValue[0] );
+		m_eDynamicStatus = eGetNumberRecords( NULL, &m_szValue[0] );
 
 		if( peEdfStatus != NULL)
 		{
-			peEdfStatus = &m_eEdfStatus;
+			peEdfStatus = &m_eDynamicStatus;
 		}
 		
 		return( &m_szValue[0] );
@@ -400,7 +395,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetNumberRecords( int* piNumberRecords, char* p
 
 CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration )
 {
-	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+	m_eDynamicStatus =	EDF_SUCCESS;	// be optimistic
 
 	memcpy( m_szValue, m_acHeaderFixedLength.acDuration, sizeof( duration_S ) );
 	m_szValue[ sizeof(duration_S) ] = '\0' ;	// make sure there is a string terminator
@@ -410,7 +405,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration
 	{
 		m_iDuration = 0;
 		strcpy_s( m_szValue, "BAD!" );
-		m_eEdfStatus =	EDF_FILE_CONTENTS_ERROR;
+		m_eDynamicStatus =	EDF_FILE_CONTENTS_ERROR;
 	}
 		
 	if( piDuration )
@@ -423,7 +418,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration
 		pszDuration = &m_szValue[0];
 	}
 
-	return( m_eEdfStatus );
+	return( m_eDynamicStatus );
 }
 
 /*!
@@ -431,15 +426,16 @@ CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration
 *   \param peEdfStatus is loaded with status value if not null.
 *   \return pointer to string of ASCII data.
 */
-	char *CReadEDF::pszGetDuration( edfStatus_E *peEdfStatus )
+
+char *CReadEDF::pszGetDuration( edfStatus_E *peEdfStatus )
 	{
 		cout << "*** Check for valid Header Record data here! ***" << endl;
 
-		m_eEdfStatus = eGetDuration( NULL, &m_szValue[0] );
+		m_eDynamicStatus = eGetDuration( NULL, &m_szValue[0] );
 
 		if( peEdfStatus != NULL)
 		{
-			peEdfStatus = &m_eEdfStatus;
+			peEdfStatus = &m_eDynamicStatus;
 		}
 		
 		return( &m_szValue[0] );
@@ -455,24 +451,16 @@ char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 {
 	m_szValue[0] = '\0';	// make sure there is a string terminator
 	int iNumberSignals = 0;
-	edfStatus_E eEdfStatus = EDF_SUCCESS;	// be optimistic
-
-	{
-	cout << "*** Check for valid Header Record data here! ***" << endl;
-	}
+	edfStatus_E eEdfStatus = EDF_VOID;	// be pessimistic 
 
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
 	{
-
-/*
-		eEdfStatus = eGetNumberSignals( &iNumberSignals );
-
-		if( eEdfStatus != EDF_SUCCESS )
+		// First check to make sure that the EDF data is ready to be accessed:
+		if( !bReadyStatus() )
 		{
 			break;
 		}
-*/
 
 		if( iSignalNumber > m_iNumberSignals )
 		{
@@ -506,9 +494,10 @@ char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 *   \param peEdfStatus is loaded with status value if not null.
 *   \return Number of signal samples.
 */
+
 int CReadEDF::iGetNumberSamples( int iSignalNumber, edfStatus_E *peEdfStatus )
 {
-	m_eEdfStatus =	EDF_SUCCESS;	// be optimistic
+	m_eDynamicStatus =	EDF_SUCCESS;	// be optimistic
 	int iNumberSamples = 0;
 
 	numberSamples_S *pacNumberSamples = (numberSamples_S *)m_pacNumberSamples;
@@ -517,12 +506,12 @@ int CReadEDF::iGetNumberSamples( int iSignalNumber, edfStatus_E *peEdfStatus )
 	iNumberSamples = atoi( m_szValue );
 	if( errno == ERANGE )
 	{
-		m_eEdfStatus = EDF_FILE_CONTENTS_ERROR;
+		m_eDynamicStatus = EDF_FILE_CONTENTS_ERROR;
 	}
 
 	if( peEdfStatus != NULL )
 	{
-		*peEdfStatus = m_eEdfStatus;
+		*peEdfStatus = m_eDynamicStatus;
 	}
 
 	return( iNumberSamples );
@@ -539,7 +528,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber
 {
 	int iSampleValue = 0;	
 	
-	m_eEdfStatus = EDF_VOID;
+	m_eDynamicStatus = EDF_VOID;
 
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
@@ -551,7 +540,7 @@ CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber
 
 		if( iSignalNumber > m_iNumberSignals )
 		{
-			m_eEdfStatus = EDF_INVALID_SIGNAL_REQUESTED;
+			m_eDynamicStatus = EDF_INVALID_SIGNAL_REQUESTED;
 			break;
 		}
 
@@ -560,14 +549,14 @@ CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber
 
 		for( int iThisSignal = 0; iThisSignal < m_iNumberSignals; iThisSignal++ )
 		{
-			iOffsetToSignal +=  iGetNumberSamples( iThisSignal, &m_eEdfStatus );
-			if( m_eEdfStatus != EDF_SUCCESS )
+			iOffsetToSignal +=  iGetNumberSamples( iThisSignal, &m_eDynamicStatus );
+			if( m_eDynamicStatus != EDF_SUCCESS )
 			{
 				break;
 			}
 		}
 
-		if( m_eEdfStatus != EDF_SUCCESS )
+		if( m_eDynamicStatus != EDF_SUCCESS )
 		{
 			break;
 		}
@@ -591,5 +580,5 @@ CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber
 
 	} //for()
 
-	return( m_eEdfStatus );
+	return( m_eDynamicStatus );
 }
