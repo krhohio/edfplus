@@ -2,6 +2,7 @@
 	File name: $HeadURL:
     \file
     \brief Contains class implementation for data extraction from a EDF Plus file.
+	(see the Doxygen |Related Pages| tab "Todo List" for future "EDF Plus" additions)
 */
 
 #include <iostream>	// for cout
@@ -60,55 +61,55 @@ CReadEDF::CReadEDF( char *pszInputFile, edfStatus_E *peEdfStatus )
 		iSize = (m_iNumberSignals * eSignalLabelSize);
 		m_pacSignalLabels = new char[iSize];
 		m_poEdfFile->read( m_pacSignalLabels, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 2nd Variable Length Header Field:
 		iSize = (m_iNumberSignals * eTransducerTypeSize);
 		m_pacTransducerTypes = new char[iSize];
 		m_poEdfFile->read( m_pacTransducerTypes, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 3rd Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePhysicalDimensionSize);
 		m_pacPhysicalDimensions = new char[iSize];
 		m_poEdfFile->read( m_pacPhysicalDimensions, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 4th Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePhysicalMinimumSize);
 		m_pacPhysicalMinimums = new char[iSize];
 		m_poEdfFile->read( m_pacPhysicalMinimums, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 5th Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePhysicalMaximumSize);
 		m_pacPhysicalMaximums = new char[iSize];
 		m_poEdfFile->read( m_pacPhysicalMaximums, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 6th Variable Length Header Field:
 		iSize = (m_iNumberSignals * eDigitalMinimumSize);
 		m_pacDigitalMinimums = new char[iSize];
 		m_poEdfFile->read( m_pacDigitalMinimums, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 7th Variable Length Header Field:
 		iSize = (m_iNumberSignals * eDigitalMaximumSize);
 		m_pacDigitalMaximums = new char[iSize];
 		m_poEdfFile->read( m_pacDigitalMaximums, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 8th Variable Length Header Field:
 		iSize = (m_iNumberSignals * ePrefilteringSize);
 		m_pacPrefilterings = new char[iSize];
 		m_poEdfFile->read( m_pacPrefilterings, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 
 		// 9th Variable Length Header Field:
 		iSize = (m_iNumberSignals * eNumberSamplesSize);
 		m_pacNumberSamples = new char[iSize];
 		m_poEdfFile->read( m_pacNumberSamples, iSize );
-		if(m_eDynamicStatus != EDF_SUCCESS) break;
+		if( m_poEdfFile->fail() ) break;
 		
 		m_eDynamicStatus = EDF_SUCCESS;			// We are successfull when arriving here
 		break;
@@ -156,19 +157,21 @@ bool CReadEDF::bValidTimeValue( void )
 		// Fake for loop for common error exit:
 		for( bool allDone = false; allDone == false; allDone = true )
 		{
-			// \todo if leading space(s) are allowed in date then test for them here:	
+			/// \todo if leading space(s) are allowed in time then test for them here:	
 			if( pacTime->cH_MSD < '0' || pacTime->cH_MSD > '2' ) break;		// check for max 24-hour time
 			if( pacTime->cH_LSD < '0' || pacTime->cH_MSD > '9' ) break;		// allow 09:00 and 19:00
 			if( pacTime->cDot1 != '.' ) break;								// ensure a non-digit terminator for atoi()
 
-//			if( int iHH = atoi( (char *)pacTime->cH_MSD ) > 23 ) break;		// no atoi error checking since done above
+			// Test for valid hours:
 			int iHH = ((pacTime->cH_MSD & 0x0F) * 10 + (pacTime->cH_LSD & 0x0F));
-			if( ((pacTime->cH_MSD & 0x0F) * 10 + (pacTime->cH_LSD & 0x0F)) > 23 ) break;
+			if( iHH > 23 ) break;
 
+			// Test for valid minutes:
 			if( pacTime->cM_MSD < '0' || pacTime->cM_MSD > '5' ) break;
 			if( pacTime->cM_LSD < '0' || pacTime->cM_MSD > '9' ) break;
 			if( pacTime->cDot2 != '.' ) break;
 
+			// Test for valid seconds:
 			if( pacTime->cS_MSD < '0' || pacTime->cS_MSD > '5' ) break;
 			if( pacTime->cS_LSD < '0' || pacTime->cS_MSD > '9' ) break;
 
@@ -196,7 +199,7 @@ bool CReadEDF::bValidDateValue( void )
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
 	{
-		// \todo if leading space(s) are allowed in date then test for them here:	
+		/// \todo if leading space(s) are allowed in date then test for them here:	
 		if( pacDate->cD_MSD < '0' || pacDate->cD_MSD > '3' ) break;		// check for max 31 days
 		if( pacDate->cD_LSD < '0' || pacDate->cD_MSD > '9' ) break;		// allow day 9, 19, 29
 		if( pacDate->cDot1 != '.' ) break;								// ensure a non-digit terminator for atoi()
@@ -429,8 +432,6 @@ CReadEDF::edfStatus_E CReadEDF::eGetDuration( int* piDuration, char* pszDuration
 
 char *CReadEDF::pszGetDuration( edfStatus_E *peEdfStatus )
 	{
-		cout << "*** Check for valid Header Record data here! ***" << endl;
-
 		m_eDynamicStatus = eGetDuration( NULL, &m_szValue[0] );
 
 		if( peEdfStatus != NULL)
@@ -451,7 +452,8 @@ char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 {
 	m_szValue[0] = '\0';	// make sure there is a string terminator
 	int iNumberSignals = 0;
-	edfStatus_E eEdfStatus = EDF_VOID;	// be pessimistic 
+	
+	m_eDynamicStatus = EDF_VOID;	// be pessimistic 
 
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
@@ -464,7 +466,7 @@ char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 
 		if( iSignalNumber > m_iNumberSignals )
 		{
-			eEdfStatus = EDF_INVALID_SIGNAL_REQUESTED;
+			m_eDynamicStatus = EDF_INVALID_SIGNAL_REQUESTED;
 			break;
 		}
 
@@ -473,15 +475,18 @@ char *CReadEDF::pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus )
 		memcpy( &m_szValue, &pacSignalLabels[iSignalNumber], eSignalLabelSize );
 		m_szValue[ eSignalLabelSize ] = '\0';
 
+		m_eDynamicStatus = EDF_SUCCESS;	
+		break;
+
 	} // for()
 
-	if( eEdfStatus != EDF_SUCCESS )
+	if( m_eDynamicStatus != EDF_SUCCESS )
 	{
 		strcpy_s( m_szValue, 5, "BAD!" );
 
 		if( peEdfStatus != NULL)
 		{
-			*peEdfStatus = eEdfStatus;
+			*peEdfStatus = m_eDynamicStatus;
 		}
 	}
 
@@ -524,16 +529,16 @@ int CReadEDF::iGetNumberSamples( int iSignalNumber, edfStatus_E *peEdfStatus )
 *   \return Status of operation.
 */
 
-CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber, int *piSampleValue )
+CReadEDF::edfStatus_E CReadEDF::eGetSample( short int iSignalNumber, int iSampleNumber, int *piSampleValue )
 {
-	int iSampleValue = 0;	
+	short int iSampleValue = 0;	
 	
 	m_eDynamicStatus = EDF_VOID;
 
 	// Fake for loop for common error exit:
 	for( bool allDone = false; allDone == false; allDone = true )
 	{
-		if( m_poEdfFile == NULL )
+		if( !bReadyStatus( &m_eDynamicStatus ) )
 		{
 			break;
 		}
@@ -564,10 +569,11 @@ CReadEDF::edfStatus_E CReadEDF::eGetSample( int iSignalNumber, int iSampleNumber
 		int iOffsetToSample = iOffsetToSignal + (iSignalNumber * eSampleSize);
 	
 		m_poEdfFile->seekg( iOffsetToSample );
-		cout << "File currently at byte: " << m_poEdfFile->tellg() << endl;
+		//cout << "File currently at byte: " << m_poEdfFile->tellg() << endl;
 
 		if( m_poEdfFile->fail() )
 		{
+			m_eDynamicStatus = CReadEDF::EDF_FILE_CONTENTS_ERROR;
 			break;
 		}
 

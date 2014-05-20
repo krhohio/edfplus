@@ -34,14 +34,14 @@ int main(int argc, char* argv[])
 	CReadEDF *poEDF = NULL;
 	CReadEDF::edfStatus_E eEdfStatus = CReadEDF::EDF_VOID;
 
+	cout << endl << "ReadEDF program by Kent H, 2014-05-20 (Version 1RC1)" << endl << endl;
+
     // Fake for loop for common error exit:
     for( bool allDone = false; allDone == false; allDone = true )
     {
-		CReadEDF::edfStatus_E eEdfStatus;
-		
 		if( argc == 2 )
 		{
-		
+			cout << "Filename entered was: " << argv[1] << endl;
 		}
 		else
 		{
@@ -62,7 +62,6 @@ int main(int argc, char* argv[])
 			break;		// exit with error status
 		}
 
-		cout << endl << "ReadEDF program by Kent Hamon, 2014-05-20" << endl << endl;
 		cout << "Start Time = " << poEDF->pszGetStartTime() << endl;
 		cout << "Start Date = " << poEDF->pszGetStartDate() << endl;
 		cout << "Number of signals = " << poEDF->pszGetNumberSignals() << endl;
@@ -77,6 +76,7 @@ int main(int argc, char* argv[])
 			break;
 		}
 
+		// Display the Signal Label and first sample:
 		for( int i=0; i < iNumberSignals; i++ )
 		{
 			cout << "Signal " << i+1 << " Label = " << poEDF->pszGetSignalLabel( i ) << endl;

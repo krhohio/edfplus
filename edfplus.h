@@ -10,10 +10,11 @@ using namespace std;
 	Revision $Revision$
 	GitHub URL: $HeadURL$
 	Modification date: $Id$
-	\brief Contains class definition for data extraction from a EDF Plus file.
+	\brief Contains class definition for data extraction from an EDF file.
+	(see the Doxygen |Related Pages| tab "Todo List" for future "EDF Plus" additions)
 */
 
-/*! \class Test
+/*! \class CReadEDF
     \brief A class for data extraction from a EDF Plus file.
 
 	From http://www.edfplus.info/specs/edf.html...
@@ -92,98 +93,172 @@ class CReadEDF
 {
 	public:
 
-		// Define status values for use in application programs:
-		enum edfStatus_E
+	// Define status values for use in application programs:
+	enum edfStatus_E
+	{
+		EDF_SUCCESS=0,					///< keep as 0 for logical OR usage!
+		EDF_VOID,						///< enum used when status is not yet available or updated
+		EDF_FILE_OPEN_ERROR,
+		EDF_FILE_CONTENTS_ERROR,
+		EDF_TIME_ERROR,
+		EDF_DATE_ERROR,
+		EDF_INVALID_SIGNAL_REQUESTED,
+	};
+
+	CReadEDF( char *csInputFile, edfStatus_E *peEdfStatus = NULL );
+	~CReadEDF( void );
+
+	//! \brief Return dynamic status (based on last file access)
+	edfStatus_E eGetStatus(void)
+	{
+		return( m_eDynamicStatus );
+	};
+
+	//! \brief Return static status (based on initial file access).
+	//! \note EDF_SUCCESS is loaded after ReadEDF::ReadEDF completes successfully.
+	bool bReadyStatus( edfStatus_E *peEdfStatus = NULL )
+	{
+		if( peEdfStatus != NULL )
 		{
-			EDF_SUCCESS=0,					///< keep as 0 for logical OR usage!
-			EDF_VOID,						///< enum used when status is not yet available or updated
-			EDF_FILE_OPEN_ERROR,
-			EDF_FILE_CONTENTS_ERROR,
-			EDF_TIME_ERROR,
-			EDF_DATE_ERROR,
-			EDF_INVALID_SIGNAL_REQUESTED,
-		};
+			*peEdfStatus = m_eStaticStatus;
+		}
+
+		if( m_eStaticStatus == EDF_SUCCESS )
+		{
+			return(true);
+		}
+		else
+		{
+			return(false);
+		}
+	};
+
+	bool bValidTimeValue( void );
+	bool bValidDateValue( void );
+
+	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL );
+	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL );
+
+	edfStatus_E eGetNumberSignals( int* piNumberSignals = NULL, char* pszNumberSignals = NULL  );
+	char *pszGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
+
+	edfStatus_E eGetNumberRecords( int* piNumberRecords = NULL, char* pszNumberRecords = NULL );
+	char *pszGetNumberRecords( edfStatus_E *peEdfStatus = NULL );
+
+	edfStatus_E eGetDuration( int* piDuration = NULL, char* pszDuration = NULL );
+	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL );
+
+	char *pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus = NULL );
+
+	int iGetNumberSamples( int iSignalNumber, edfStatus_E *peEdfStatus = NULL );
+
+	edfStatus_E eGetSample( short int iSignalNumber, int iSampleNumber, int *piSampleValue );
+
+	private:
+	ifstream *m_poEdfFile;
+	edfStatus_E m_edfStatus;
+
+	edfStatus_E m_eStaticStatus;						///< status at end of contypedef structor
+	edfStatus_E m_eDynamicStatus;						///< status before/after last data access
 	
-		// Define the Fixed Length Header fields for use in application programs:
-		struct format_S
-        {
-            char format[8];
-        };
+	char *m_pcFileData;
 
-        struct localPatientID_S
-        {
-            char acLocalPatientID[80];
-        };
+	int m_iNumberSignals;
+	int m_iNumberRecords;
+	int m_iDuration;
 
-		struct localRecordingID_S
-        {
-            char acLocalRecordingID[80];
-        };
+//	char **pacHeaderVariableLength;
+	char *m_pacSignalLabels;
+	char *m_pacTransducerTypes;
+	char *m_pacPhysicalDimensions;
+	char *m_pacPhysicalMinimums;
+	char *m_pacPhysicalMaximums;
+	char *m_pacDigitalMinimums;
+	char *m_pacDigitalMaximums;
+	char *m_pacPrefilterings;
+	char *m_pacNumberSamples;
+	char *m_pacReserveds;
 
-        struct date_S
-        {
-            char cD_MSD;						///< ASCII Day MSD
-            char cD_LSD;						///< ASCII Day LSD
-			char cDot1;							///< ASCII ‘.’
-			char cM_MSD;						///< ASCII Month MSD
-			char cM_LSD;						///< ASCII Month LSD
-			char cDot2;							///< ASCII ‘.’
-			char cY_MSD;						///< ASCII Year MSD
-        	char cY_LSD;						///< ASCII Year LSD
-        };
+	// Define the Fixed Length Header fields for use in application programs:
+	struct format_S
+    {
+        char format[8];
+    };
 
-        struct time_S
-        {
-            char cH_MSD;						///< ASCII Hour MSD
-            char cH_LSD;						///< ASCII Hour LSD
-			char cDot1;							///< ASCII ‘.’
-			char cM_MSD;						///< ASCII Minutes MSD
-			char cM_LSD;						///< ASCII Minutes LSD
-			char cDot2;							///< ASCII ‘.’
-			char cS_MSD;						///< ASCII Seconds MSD
-        	char cS_LSD;						///< ASCII Seconds LSD
-		};
+    struct localPatientID_S
+    {
+        char acLocalPatientID[80];
+    };
 
-		struct headerSize_S						
-		{
-			char acHeaderSize[8];				///< 8 ascii : number of bytes in header record
-		};
-		               
-		struct reserved44_S
-		{
-			char acReserved44[44];				///< 44 ascii : reserved 
-		};
+	struct localRecordingID_S
+    {
+        char acLocalRecordingID[80];
+    };
 
-		struct numberRecords_S
-		{
-			char acNumberRecords[8];			///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
-		};
+    struct date_S
+    {
+        char cD_MSD;						///< ASCII Day MSD
+        char cD_LSD;						///< ASCII Day LSD
+		char cDot1;							///< ASCII ‘.’
+		char cM_MSD;						///< ASCII Month MSD
+		char cM_LSD;						///< ASCII Month LSD
+		char cDot2;							///< ASCII ‘.’
+		char cY_MSD;						///< ASCII Year MSD
+    	char cY_LSD;						///< ASCII Year LSD
+    };
 
-		struct duration_S
-		{
-			char acDuration[8];					///< 8 ascii : duration of a data record, in seconds 
-		};
+    struct time_S
+    {
+        char cH_MSD;						///< ASCII Hour MSD
+        char cH_LSD;						///< ASCII Hour LSD
+		char cDot1;							///< ASCII ‘.’
+		char cM_MSD;						///< ASCII Minutes MSD
+		char cM_LSD;						///< ASCII Minutes LSD
+		char cDot2;							///< ASCII ‘.’
+		char cS_MSD;						///< ASCII Seconds MSD
+    	char cS_LSD;						///< ASCII Seconds LSD
+	};
 
-		struct numberSignals_S
-		{
-			char acNumberSignals[4];			///< 4 ascii : number of signals (ns) in data record 
-		};
+	struct headerSize_S						
+	{
+		char acHeaderSize[8];				///< 8 ascii : number of bytes in header record
+	};
+	               
+	struct reserved44_S
+	{
+		char acReserved44[44];				///< 44 ascii : reserved 
+	};
 
-		/// \todo make these uppercase; i.e. eFormatSize -> EDF_FORMAT_SIZE
+	struct numberRecords_S
+	{
+		char acNumberRecords[8];			///< 8 ascii : number of data records (-1 if unknown, obey item 10 of the additional EDF+ specs) 
+	};
 
-		enum headerFixedLengthSizes_E
-		{
-			eFormatSize = sizeof( format_S),
-			eLocalPatientIDSize = sizeof( localPatientID_S),
-			eLocalRecordingIDSize = sizeof( localRecordingID_S),
-			eStartDateSize = sizeof(date_S),
-			eStartTimeSize = sizeof(time_S),
-			eHeaderSize = sizeof(headerSize_S),
-			eReserved44Size = sizeof(reserved44_S),
-			eNumberRecordsSize = sizeof(numberRecords_S),
-			eDurationSize = sizeof(duration_S),
-			eNumberSignalsSize = sizeof(numberSignals_S),
-		};
+	struct duration_S
+	{
+		char acDuration[8];					///< 8 ascii : duration of a data record, in seconds 
+	};
+
+	struct numberSignals_S
+	{
+		char acNumberSignals[4];			///< 4 ascii : number of signals (ns) in data record 
+	};
+
+	/// \todo Make these uppercase if the Software Team prefers; i.e. eFormatSize -> EDF_FORMAT_SIZE
+
+	enum headerFixedLengthSizes_E
+	{
+		eFormatSize = sizeof( format_S),
+		eLocalPatientIDSize = sizeof( localPatientID_S),
+		eLocalRecordingIDSize = sizeof( localRecordingID_S),
+		eStartDateSize = sizeof(date_S),
+		eStartTimeSize = sizeof(time_S),
+		eHeaderSize = sizeof(headerSize_S),
+		eReserved44Size = sizeof(reserved44_S),
+		eNumberRecordsSize = sizeof(numberRecords_S),
+		eDurationSize = sizeof(duration_S),
+		eNumberSignalsSize = sizeof(numberSignals_S),
+	};
 
 
 	struct headerFixedLength_S
@@ -281,74 +356,11 @@ class CReadEDF
 		char acReserved[32];								///< ns * 32 ascii : ns * reserved
 	};
 
-	CReadEDF( char *csInputFile, edfStatus_E *peEdfStatus = NULL );
-	~CReadEDF( void );
-
-	//! \brief Return dynamic status (based on last file access)
-	edfStatus_E eGetStatus(void)
-	{
-		return( m_eDynamicStatus );
-	};
-
-	//! \brief Return static status (based on initial file access).
-	//! \note EDF_SUCCESS is loaded after ReadEDF::ReadEDF completes successfully.
-	bool bReadyStatus( edfStatus_E *peEdfStatus = NULL )
-	{
-		if( peEdfStatus != NULL ) *peEdfStatus = m_eStaticStatus;
-		if( m_eStaticStatus == EDF_SUCCESS )	return(true); else return(false);
-	};
-
-	bool bValidTimeValue( void );
-	bool bValidDateValue( void );
-
-	char *pszGetStartTime( edfStatus_E *peEdfStatus = NULL );
-	char *pszGetStartDate( edfStatus_E *peEdfStatus = NULL );
-
-	edfStatus_E eGetNumberSignals( int* piNumberSignals = NULL, char* pszNumberSignals = NULL  );
-	char *pszGetNumberSignals( edfStatus_E *peEdfStatus = NULL );
-
-	edfStatus_E eGetNumberRecords( int* piNumberRecords = NULL, char* pszNumberRecords = NULL );
-	char *pszGetNumberRecords( edfStatus_E *peEdfStatus = NULL );
-
-	edfStatus_E eGetDuration( int* piDuration = NULL, char* pszDuration = NULL );
-	char *pszGetDuration( edfStatus_E *eEdfStatus = NULL );
-
-	char *pszGetSignalLabel( int iSignalNumber, edfStatus_E *peEdfStatus = NULL );
-
-	int iGetNumberSamples( int iSignalNumber, edfStatus_E *peEdfStatus = NULL );
-
-	edfStatus_E eGetSample( int iSignalNumber, int iSampleNumber, int *piSampleValue );
-
-private:	
-	ifstream *m_poEdfFile;
-	edfStatus_E m_edfStatus;
-
-	edfStatus_E m_eStaticStatus;						///< status at end of constructor
-	edfStatus_E m_eDynamicStatus;						///< status before/after last data access
-	
-	char *m_pcFileData;
-
 	headerFixedLength_S m_acHeaderFixedLength;
 	headerVariableLength_S *m_pacHeaderVariableLength;
 
 	char m_szValue[ sizeof( headerFixedLength_S)+1 ];	///< worst case length for return values
 	int m_iValue;
-
-	int m_iNumberSignals;
-	int m_iNumberRecords;
-	int m_iDuration;
-
-//	char **pacHeaderVariableLength;
-	char *m_pacSignalLabels;
-	char *m_pacTransducerTypes;
-	char *m_pacPhysicalDimensions;
-	char *m_pacPhysicalMinimums;
-	char *m_pacPhysicalMaximums;
-	char *m_pacDigitalMinimums;
-	char *m_pacDigitalMaximums;
-	char *m_pacPrefilterings;
-	char *m_pacNumberSamples;
-	char *m_pacReserveds;
 
 }; //class CReadEDF
 
